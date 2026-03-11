@@ -189,14 +189,49 @@ export default function VerificationSessionPage() {
     }
   };
 
-  const endSession = () => {
+  const endSession = async () => {
     setSessionActive(false);
-    toast.success('Verification session completed!');
+    toast.success('Verification session completed! Processing results...');
     
     // Stop camera
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach((track) => track.stop());
+    }
+    
+    // Complete session and update attendance
+    try {
+      // Mock verification results - in real implementation, this would come from AI processing
+      const mockResults = [
+        {
+          studentId: '1',
+          studentName: 'Student 1',
+          detectionCount: 8,
+          totalImages: 10,
+          status: 'present',
+          averageSimilarity: 0.85,
+          flags: [],
+          detectedInImages: [1, 2, 3, 4, 5, 6, 7, 8],
+        },
+        // Add more mock results as needed
+      ];
+
+      const response = await fetch('/api/verification/session/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          verificationResults: mockResults,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`Attendance updated! ${data.summary.present} present, ${data.summary.absent} absent`);
+      }
+    } catch (error) {
+      console.error('Error completing session:', error);
+      toast.error('Session completed but failed to update attendance');
     }
     
     // Redirect to results

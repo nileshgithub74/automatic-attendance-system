@@ -71,7 +71,8 @@ export default function VerificationMonitorPage() {
     }
 
     const role = user?.publicMetadata?.role as string;
-    if (role !== 'Admin' && role !== 'admin') {
+    if (!role || (role.toLowerCase() !== 'admin' && role.toLowerCase() !== 'principal')) {
+      toast.error('Access denied. Admin or Principal access required.');
       router.push('/unauthorized');
       return;
     }
