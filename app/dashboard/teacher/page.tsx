@@ -43,7 +43,7 @@ export default function TeacherDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClass, setSelectedClass] = useState('');
-  const [activeTab, setActiveTab] = useState<'mark' | 'reports' | 'faceRecognition'>('mark');
+  const [activeTab, setActiveTab] = useState<'mark' | 'reports' | 'faceRecognition' | 'monitor'>('mark');
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
@@ -491,6 +491,16 @@ export default function TeacherDashboard() {
                 }`}
               >
                 📹 Face Recognition Attendance
+              </button>
+              <button
+                onClick={() => setActiveTab('monitor')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'monitor'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                🔍 AI Monitor
               </button>
             </nav>
           </div>
@@ -1132,6 +1142,101 @@ export default function TeacherDashboard() {
               )}
             </div>
           </>
+        )}
+
+        {/* AI Monitor Tab */}
+        {activeTab === 'monitor' && (
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">🔍 AI Verification Monitor</h2>
+              <p className="text-gray-600">Monitor your verification sessions, student locations, and network security</p>
+            </div>
+
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 border-2 border-purple-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">Full Monitoring Dashboard</h3>
+                  <p className="text-sm text-gray-700 mb-4">
+                    View detailed information about:
+                  </p>
+                  <ul className="space-y-2 text-sm text-gray-700">
+                    <li className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      All verification sessions with status and progress
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      </svg>
+                      Student GPS locations and distance from classroom
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      VPN/Proxy detection and network security analysis
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      Real-time statistics and analytics
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <button
+                    onClick={() => router.push('/admin/verification-monitor')}
+                    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-3"
+                  >
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Open Monitor Dashboard
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2 text-center">View detailed monitoring</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Stats Preview */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-gray-700">Sessions Today</h4>
+                  <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <p className="text-3xl font-bold text-blue-600">0</p>
+                <p className="text-xs text-gray-600 mt-1">Click monitor to view all</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 border border-green-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-gray-700">Location Logs</h4>
+                  <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  </svg>
+                </div>
+                <p className="text-3xl font-bold text-green-600">0</p>
+                <p className="text-xs text-gray-600 mt-1">GPS tracking records</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-6 border border-red-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-gray-700">VPN Detected</h4>
+                  <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <p className="text-3xl font-bold text-red-600">0</p>
+                <p className="text-xs text-gray-600 mt-1">Suspicious networks</p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
