@@ -371,6 +371,18 @@ export default function TeacherDashboard() {
                   </div>
                 </div>
               </div>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => router.push('/dashboard/teacher/verification')}
+                  className="px-6 py-3 bg-white text-purple-600 hover:bg-purple-50 rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2 whitespace-nowrap"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  🤖 Start AI Verification
+                </button>
+                <p className="text-xs text-green-100 text-center">Check if students are in class</p>
+              </div>
             </div>
           </div>
         </div>
