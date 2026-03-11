@@ -748,6 +748,22 @@ export default function AdminDashboard() {
             </div>
           </Link>
 
+          <Link
+            href="/admin/verification-monitor"
+            className="bg-white rounded-xl shadow-md p-4 hover:shadow-xl transition-all transform hover:scale-105 border-l-4 border-pink-500 text-left"
+          >
+            <div className="flex items-center">
+              <div className="bg-pink-100 rounded-lg p-3 mr-3">
+                <svg className="w-6 h-6 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">🔍 AI Monitor</p>
+                <p className="text-xs text-gray-500">Location & VPN</p>
+              </div>
+            </div>
+          </Link>
           <button
             onClick={() => setShowCreateUserForm(true)}
             className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-md p-4 hover:shadow-xl transition-all transform hover:scale-105 text-white"

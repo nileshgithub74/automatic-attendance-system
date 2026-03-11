@@ -673,6 +673,65 @@ export default function TeacherDashboard() {
             </button>
           </div>
         )}
+
+        {/* Smart AI Verification Session Button */}
+        {hasMarkedToday && students.length > 0 && (
+          <div className="mt-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl shadow-lg p-6 border-2 border-purple-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="bg-purple-600 rounded-full p-3">
+                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">🤖 Smart AI Verification</h3>
+                    <p className="text-sm text-gray-600">Verify attendance using AI face recognition</p>
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg p-4 mb-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">How it works:</h4>
+                  <ul className="space-y-2 text-sm text-gray-700">
+                    <li className="flex items-start gap-2">
+                      <span className="text-purple-600 font-bold">1.</span>
+                      <span>Start a 5-10 minute verification session</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-purple-600 font-bold">2.</span>
+                      <span>System captures 10 classroom images automatically</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-purple-600 font-bold">3.</span>
+                      <span>AI detects and matches student faces</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-purple-600 font-bold">4.</span>
+                      <span>Students present in 50%+ images marked as verified</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-purple-600 font-bold">5.</span>
+                      <span>Location and network security checks included</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div className="ml-6">
+                <button
+                  onClick={() => router.push('/dashboard/teacher/verification')}
+                  className="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-3"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Start Verification Session
+                </button>
+                <p className="text-xs text-gray-500 mt-2 text-center">Click to begin AI verification</p>
+              </div>
+            </div>
+          </div>
+        )}
           </>
         )}
 
