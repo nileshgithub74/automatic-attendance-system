@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import clientPromise from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
 export async function PATCH(request: Request) {
   try {
@@ -32,9 +33,22 @@ export async function PATCH(request: Request) {
     const client = await clientPromise;
     const db = client.db('attendance_system');
 
+    // Convert recordId to ObjectId if it's a valid MongoDB ObjectId
+    let query: any = { _id: recordId };
+    try {
+      if (ObjectId.isValid(recordId)) {
+        query = { _id: new ObjectId(recordId) };
+      }
+    } catch (e) {
+      // If conversion fails, use recordId as is
+      console.log('Could not convert to ObjectId, using as string');
+    }
+
+    console.log('Updating attendance with query:', query);
+
     // Update the attendance record
     const result = await db.collection('attendance').updateOne(
-      { _id: recordId },
+      query,
       { 
         $set: { 
           status,
@@ -43,6 +57,8 @@ export async function PATCH(request: Request) {
         } 
       }
     );
+
+    console.log('Update result:', result);
 
     if (result.matchedCount === 0) {
       return NextResponse.json({ error: 'Attendance record not found' }, { status: 404 });

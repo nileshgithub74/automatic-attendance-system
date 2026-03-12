@@ -92,7 +92,7 @@ export default function FaceRegistrationPage() {
   const checkExistingRegistration = async (studentId: string) => {
     try {
       console.log('Checking face registration for student:', studentId);
-      const url = `/api/face/register?studentId=${encodeURIComponent(studentId)}`;
+      const url = `/api/student/face-registration?studentId=${encodeURIComponent(studentId)}`;
       console.log('📤 Fetching:', url);
       
       const controller = new AbortController();
@@ -194,7 +194,7 @@ export default function FaceRegistrationPage() {
         images: capturedImages,
       };
       
-      const response = await fetch('/api/face/register', {
+      const response = await fetch('/api/student/face-registration', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -262,7 +262,7 @@ export default function FaceRegistrationPage() {
           id: progressToast
         });
         
-        const response = await fetch('/api/face/register-single', {
+        const response = await fetch('/api/student/face-registration', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -270,10 +270,7 @@ export default function FaceRegistrationPage() {
           body: JSON.stringify({
             studentId: userData.id,
             studentName: userData.name,
-            studentEmail: userData.email,
-            image: capturedImages[i],
-            imageIndex: i,
-            totalImages: capturedImages.length
+            images: [capturedImages[i]] // Send one image at a time
           }),
         });
 
