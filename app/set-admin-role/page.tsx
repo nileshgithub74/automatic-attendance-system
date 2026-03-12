@@ -30,7 +30,7 @@ export default function SetAdminRolePage() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage('✅ Admin role set successfully! Redirecting...');
+        setMessage('Admin role set successfully! Redirecting...');
         
         // Wait a moment for Clerk to sync
         setTimeout(() => {
@@ -82,8 +82,8 @@ export default function SetAdminRolePage() {
 
         {message && (
           <div className={`mb-4 p-4 rounded-lg ${
-            message.includes('✅') ? 'bg-green-50 text-green-800' : 
-            message.includes('❌') ? 'bg-red-50 text-red-800' : 
+            message.includes('successfully') ? 'bg-green-50 text-green-800' : 
+            message.includes('failed') ? 'bg-red-50 text-red-800' : 
             'bg-blue-50 text-blue-800'
           }`}>
             {message}

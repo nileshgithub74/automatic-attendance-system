@@ -236,7 +236,7 @@ export default function RegisterFacePage() {
                 {isCapturing && (
                   <div className="w-full">
                     <div className="mb-4 text-center">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">📹 Camera Preview</h3>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Camera Preview</h3>
                       <p className="text-sm text-gray-600">Position your face in the center of the frame</p>
                     </div>
                     <div className="bg-black rounded-xl overflow-hidden mx-auto border-4 border-green-500 shadow-2xl" style={{ width: '640px', height: '480px', maxWidth: '100%' }}>

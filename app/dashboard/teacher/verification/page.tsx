@@ -275,7 +275,7 @@ export default function VerificationSessionPage() {
           </button>
           
           <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 rounded-2xl shadow-xl p-8 text-white">
-            <h1 className="text-4xl font-bold mb-2">🤖 Smart AI Verification Session</h1>
+            <h1 className="text-4xl font-bold mb-2">Smart AI Verification Session</h1>
             <p className="text-purple-100 text-lg">Automated classroom attendance verification using AI face recognition</p>
           </div>
         </div>
@@ -306,7 +306,7 @@ export default function VerificationSessionPage() {
 
         {/* Camera Preview */}
         <div className="bg-white rounded-xl shadow-xl p-6 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">📹 Camera Preview</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Camera Preview</h2>
           
           <div className="relative bg-gray-900 rounded-lg overflow-hidden" style={{ aspectRatio: '16/9' }}>
             <video

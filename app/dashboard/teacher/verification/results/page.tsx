@@ -104,7 +104,7 @@ function ResultsContent() {
           <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 rounded-2xl shadow-xl p-8 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-4xl font-bold mb-2">✅ Verification Results</h1>
+                <h1 className="text-4xl font-bold mb-2">Verification Results</h1>
                 <p className="text-purple-100 text-lg">AI-based attendance verification completed</p>
                 {sessionInfo && (
                   <p className="text-sm text-purple-200 mt-2">

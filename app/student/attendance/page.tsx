@@ -55,7 +55,7 @@ export default function StudentAttendancePage() {
   const fetchAttendance = async (studentId: string) => {
     try {
       setLoading(true);
-      console.log('🔍 Fetching attendance for student:', studentId);
+      console.log('Fetching attendance for student:', studentId);
       
       const headers = {
         'x-student-id': studentId.toString(),
@@ -67,7 +67,7 @@ export default function StudentAttendancePage() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Attendance data received:', data);
+        console.log('Attendance data received:', data);
         setAttendanceRecords(data.records || []);
         setAttendanceStats(data.statistics || {
           totalDays: 0,

@@ -38,11 +38,11 @@ export default function RoleAssignmentPage() {
     const teacherData = localStorage.getItem('teacherData');
     const parentData = localStorage.getItem('parentData');
 
-    console.log('🔍 Role assignment page - checking localStorage:', { userRole, hasStudentData: !!studentData, hasTeacherData: !!teacherData, hasParentData: !!parentData });
+    console.log('Role assignment page - checking localStorage:', { userRole, hasStudentData: !!studentData, hasTeacherData: !!teacherData, hasParentData: !!parentData });
 
     if (userRole && (studentData || teacherData || parentData)) {
       const role = userRole.toLowerCase();
-      console.log('✅ Found custom login data, redirecting to:', role);
+      console.log('Found custom login data, redirecting to:', role);
       setRedirecting(true);
       
       if (role === 'student' && studentData) {
@@ -225,7 +225,7 @@ export default function RoleAssignmentPage() {
             </div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-left">
               <p className="text-sm font-semibold text-yellow-900 mb-2">
-                🔒 Security Notice
+                Security Notice
               </p>
               <p className="text-xs text-yellow-800">
                 For security reasons, only authorized administrators can assign roles. This prevents unauthorized access to the school system.
@@ -298,10 +298,10 @@ export default function RoleAssignmentPage() {
                 />
                 <span className="ml-3 font-medium text-gray-900">{role}</span>
                 <span className="ml-auto text-xs text-gray-500">
-                  {role === "Principal" && (isDisabled ? "🔒 Restricted" : "👨‍💼 Admin")}
-                  {role === "Teacher" && "👨‍🏫 Mark Attendance"}
-                  {role === "Student" && "👨‍🎓 View Own Attendance"}
-                  {role === "Parent" && "👨‍👩‍👧 View Child Attendance"}
+                  {role === "Principal" && (isDisabled ? "Restricted" : "Admin")}
+                  {role === "Teacher" && "Mark Attendance"}
+                  {role === "Student" && "View Own Attendance"}
+                  {role === "Parent" && "View Child Attendance"}
                 </span>
               </label>
             );

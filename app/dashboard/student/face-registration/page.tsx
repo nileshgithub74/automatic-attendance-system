@@ -25,14 +25,14 @@ export default function FaceRegistrationPage() {
   useEffect(() => {
     if (!isLoaded) return;
 
-    console.log('🔍 Face Registration - Checking authentication...');
+    console.log('Face Registration - Checking authentication...');
 
     // Check for custom login
     const role = localStorage.getItem('userRole');
     const studentData = localStorage.getItem('studentData');
 
     if (studentData && role?.toLowerCase() === 'student') {
-      console.log('✅ Custom login detected');
+      console.log('Custom login detected');
       const student = JSON.parse(studentData);
       const ids = getStudentIds(student.id);
       console.log('📝 Student data:', { 
@@ -56,7 +56,7 @@ export default function FaceRegistrationPage() {
     // Check for Clerk authentication
     if (user) {
       const userRole = (user.publicMetadata?.role as string)?.toLowerCase();
-      console.log('✅ Clerk user detected, role:', userRole);
+      console.log('Clerk user detected, role:', userRole);
       
       if (userRole === 'student') {
         const ids = getStudentIds(user.id);
@@ -91,7 +91,7 @@ export default function FaceRegistrationPage() {
 
   const checkExistingRegistration = async (studentId: string) => {
     try {
-      console.log('🔍 Checking face registration for student:', studentId);
+      console.log('Checking face registration for student:', studentId);
       const url = `/api/face/register?studentId=${encodeURIComponent(studentId)}`;
       console.log('📤 Fetching:', url);
       
@@ -112,7 +112,7 @@ export default function FaceRegistrationPage() {
       console.log('📥 Response ok:', response.ok);
       
       const data = await response.json();
-      console.log('✅ Registration check data:', data);
+      console.log('Registration check data:', data);
       
       // Accept both success and failure responses
       if (data.success !== false) {
@@ -283,7 +283,7 @@ export default function FaceRegistrationPage() {
           throw new Error(data.message || `Failed to upload image ${i + 1}`);
         }
         
-        console.log(`✅ Image ${i + 1}/${capturedImages.length} uploaded`);
+        console.log(`Image ${i + 1}/${capturedImages.length} uploaded`);
       }
       
       toast.dismiss(progressToast);

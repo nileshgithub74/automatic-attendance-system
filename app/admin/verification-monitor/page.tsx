@@ -161,7 +161,7 @@ export default function VerificationMonitorPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl shadow-xl p-8 text-white">
-            <h1 className="text-4xl font-bold mb-2">🔍 Verification Monitoring Dashboard</h1>
+            <h1 className="text-4xl font-bold mb-2">Verification Monitoring Dashboard</h1>
             <p className="text-blue-100 text-lg">Monitor sessions, locations, and network security</p>
           </div>
         </div>
@@ -212,7 +212,7 @@ export default function VerificationMonitorPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                📍 Location Tracking
+                Location Tracking
               </button>
               <button
                 onClick={() => setActiveTab('network')}
@@ -286,7 +286,7 @@ export default function VerificationMonitorPage() {
         {/* Location Tracking Tab */}
         {activeTab === 'locations' && (
           <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">📍 Location Tracking Logs</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Location Tracking Logs</h2>
             
             {locationLogs.length === 0 ? (
               <div className="text-center py-12">
@@ -419,12 +419,12 @@ export default function VerificationMonitorPage() {
                       )}
                       {log.isHosting && (
                         <span className="px-3 py-1 bg-orange-600 text-white text-xs font-bold rounded-full">
-                          ⚠️ DATACENTER IP
+                          DATACENTER IP
                         </span>
                       )}
                       {!log.isVPN && !log.isProxy && !log.isTor && log.riskScore < 40 && (
                         <span className="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-full">
-                          ✅ VERIFIED
+                          VERIFIED
                         </span>
                       )}
                     </div>

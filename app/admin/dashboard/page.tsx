@@ -129,7 +129,7 @@ export default function AdminDashboard() {
     }
     
     if (user) {
-      console.log('✅ User authenticated, fetching data...');
+      console.log('User authenticated, fetching data...');
       fetchAllData();
       const interval = setInterval(() => {
         fetchAllData();
@@ -152,7 +152,7 @@ export default function AdminDashboard() {
   }, [activeTab]);
 
   const fetchAllData = async () => {
-    console.log('🔄 Fetching admin dashboard data...');
+    console.log('Fetching admin dashboard data...');
     try {
       const [studentsRes, teachersRes, classesRes, notificationsRes, pendingUsersRes] =
         await Promise.all([
@@ -163,7 +163,7 @@ export default function AdminDashboard() {
           fetch("/api/admin/pending-users"),
         ]);
 
-      console.log('📊 API Response Status:', {
+      console.log('API Response Status:', {
         students: studentsRes.status,
         teachers: teachersRes.status,
         classes: classesRes.status,
@@ -187,7 +187,7 @@ export default function AdminDashboard() {
           pendingUsersRes.json(),
         ]);
 
-      console.log('✅ Data fetched successfully:', {
+      console.log('Data fetched successfully:', {
         students: studentsData?.length || 0,
         teachers: teachersData?.length || 0,
         classes: classesData?.length || 0,
@@ -214,7 +214,7 @@ export default function AdminDashboard() {
       setNotifications({ totalToday: 0 });
       setPendingUsers([]);
     } finally {
-      console.log('✅ Setting loading to false');
+      console.log('Setting loading to false');
       setLoading(false);
     }
   };

@@ -139,7 +139,7 @@ export default function TeacherDashboard() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Fetched students:', data);
+        console.log('Fetched students:', data);
         
         if (data.success && data.students) {
           // Convert the students to the format expected by the component
@@ -360,7 +360,7 @@ export default function TeacherDashboard() {
           <div className="bg-gradient-to-r from-green-600 via-teal-600 to-blue-600 rounded-2xl shadow-xl p-8 text-white">
             <div className="flex justify-between items-start">
               <div>
-                <h1 className="text-4xl font-bold mb-2">Hello, {user?.firstName}! 👨‍🏫</h1>
+                <h1 className="text-4xl font-bold mb-2">Hello, {user?.firstName}!</h1>
                 <p className="text-green-100 text-lg mb-4">Ready to mark today's attendance?</p>
                 <div className="flex gap-4 text-sm">
                   <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
@@ -379,7 +379,7 @@ export default function TeacherDashboard() {
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
-                  🤖 Start AI Verification
+                  Start AI Verification
                 </button>
                 <p className="text-xs text-green-100 text-center">Check if students are in class</p>
               </div>
@@ -490,7 +490,7 @@ export default function TeacherDashboard() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                📹 Face Recognition Attendance
+                Face Recognition Attendance
               </button>
               <button
                 onClick={() => setActiveTab('monitor')}
@@ -500,7 +500,7 @@ export default function TeacherDashboard() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                🔍 AI Monitor
+                AI Monitor
               </button>
             </nav>
           </div>
@@ -708,7 +708,7 @@ export default function TeacherDashboard() {
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">🤖 Smart AI Verification</h3>
+                    <h3 className="text-xl font-bold text-gray-900">Smart AI Verification</h3>
                     <p className="text-sm text-gray-600">Verify attendance using AI face recognition</p>
                   </div>
                 </div>
@@ -1003,7 +1003,6 @@ export default function TeacherDashboard() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                    <span className="text-2xl mr-2">📹</span>
                     Face Recognition Attendance
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
@@ -1148,7 +1147,7 @@ export default function TeacherDashboard() {
         {activeTab === 'monitor' && (
           <div className="bg-white rounded-xl shadow-md p-6">
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">🔍 AI Verification Monitor</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">AI Verification Monitor</h2>
               <p className="text-gray-600">Monitor your verification sessions, student locations, and network security</p>
             </div>
 

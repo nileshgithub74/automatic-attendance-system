@@ -58,7 +58,7 @@ export default function StudentDashboard() {
       return; // Wait for Clerk to load
     }
 
-    console.log('🔍 Student Dashboard - Checking authentication...');
+    console.log('Student Dashboard - Checking authentication...');
     console.log('Clerk user:', user?.id);
     console.log('Clerk role:', user?.publicMetadata?.role);
 
@@ -68,7 +68,7 @@ export default function StudentDashboard() {
 
     if (studentData && role?.toLowerCase() === 'student') {
       // Custom login system
-      console.log('✅ Using custom login (localStorage)');
+      console.log('Using custom login (localStorage)');
       const student = JSON.parse(studentData);
       setUserData(student);
       setAuthChecking(false);
@@ -83,7 +83,7 @@ export default function StudentDashboard() {
       
       if (userRole === 'student') {
         // User is authenticated with Clerk as a student
-        console.log('✅ Valid student role, creating user object');
+        console.log('Valid student role, creating user object');
         const student = {
           id: user.id,
           email: user.emailAddresses[0]?.emailAddress || '',
@@ -94,7 +94,7 @@ export default function StudentDashboard() {
         };
         console.log('📝 Setting user data:', student);
         setUserData(student);
-        console.log('✅ Setting authChecking to false');
+        console.log('Setting authChecking to false');
         setAuthChecking(false);
         console.log('📊 Fetching attendance...');
         fetchAttendance(student.id);
@@ -116,7 +116,7 @@ export default function StudentDashboard() {
   const fetchAttendance = async (studentId: string) => {
     try {
       setLoading(true);
-      console.log('🔍 Fetching attendance for student:', studentId);
+      console.log('Fetching attendance for student:', studentId);
       
       const headers = {
         'x-student-id': studentId.toString(),
@@ -128,7 +128,7 @@ export default function StudentDashboard() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Attendance data received:', data);
+        console.log('Attendance data received:', data);
         setAttendanceRecords(data.records || []);
         setAttendanceStats(data.statistics || {
           totalDays: 0,
@@ -221,7 +221,7 @@ export default function StudentDashboard() {
     );
   }
 
-  console.log('✅ Rendering dashboard content for:', userData.name);
+  console.log('Rendering dashboard content for:', userData.name);
   
   return (
     <div className="min-h-screen bg-gray-50">
