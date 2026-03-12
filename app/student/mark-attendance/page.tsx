@@ -131,6 +131,66 @@ export default function MarkAttendancePage() {
     setMessage({ type: 'info', text: 'Processing your attendance...' });
 
     try {
+      // Get location data
+      let location = null;
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+          });
+        });
+        
+        location = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          platform: navigator.platform
+        };
+      } catch (error) {
+        console.error('Location error:', error);
+        setMessage({ type: 'info', text: 'Location unavailable, continuing...' });
+      }
+
+      // Get network information
+      const networkInfo: any = {};
+      
+      // Get connection type
+      const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+      if (connection) {
+        networkInfo.connectionType = connection.effectiveType || connection.type || 'Unknown';
+        networkInfo.downlink = connection.downlink;
+        networkInfo.rtt = connection.rtt; // Round-trip time (latency)
+      }
+
+      // Measure latency
+      const startTime = performance.now();
+      try {
+        await fetch('/api/hello', { method: 'HEAD' });
+        const endTime = performance.now();
+        networkInfo.latency = Math.round(endTime - startTime);
+      } catch (error) {
+        networkInfo.latency = 0;
+      }
+
+      // Calculate jitter (variation in latency)
+      const latencies = [];
+      for (let i = 0; i < 3; i++) {
+        const start = performance.now();
+        try {
+          await fetch('/api/hello', { method: 'HEAD' });
+          latencies.push(performance.now() - start);
+        } catch (error) {
+          // Ignore errors
+        }
+      }
+      if (latencies.length > 1) {
+        const avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
+        const variance = latencies.reduce((sum, lat) => sum + Math.pow(lat - avgLatency, 2), 0) / latencies.length;
+        networkInfo.jitter = Math.round(Math.sqrt(variance));
+      }
+
       const response = await fetch('/api/student/mark-attendance', {
         method: 'POST',
         headers: {
@@ -142,17 +202,32 @@ export default function MarkAttendancePage() {
           class: userData.class,
           rollNo: userData.rollNo,
           faceImage: capturedImage,
+          location,
+          networkInfo
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setMessage({ type: 'success', text: data.message || 'Attendance marked successfully!' });
+        // Show detailed result message
+        let resultMessage = data.message || 'Attendance marked successfully!';
+        
+        if (data.record?.autoDecision) {
+          resultMessage += `\n\nStatus: ${data.record.autoDecision.status.toUpperCase()}`;
+          if (data.record.location) {
+            resultMessage += `\nDistance from classroom: ${data.record.location.distanceFromClassroom}m`;
+          }
+          if (data.record.networkSecurity) {
+            resultMessage += `\nSecurity Risk: ${data.record.networkSecurity.threatLevel.toUpperCase()}`;
+          }
+        }
+        
+        setMessage({ type: 'success', text: resultMessage });
         setCapturedImage(null);
         setTimeout(() => {
           router.push('/dashboard/student');
-        }, 2000);
+        }, 3000);
       } else {
         // Check if attendance already marked
         if (data.error && data.error.includes('already marked')) {
