@@ -17,6 +17,8 @@ export default function VerificationSessionPage() {
   const [totalImages, setTotalImages] = useState(10);
   const [cameraReady, setCameraReady] = useState(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [existingSession, setExistingSession] = useState<any>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -34,6 +36,9 @@ export default function VerificationSessionPage() {
 
     // Get location
     getLocation();
+    
+    // Check for existing active session
+    checkActiveSession();
   }, [isLoaded, user, router]);
 
   const getLocation = () => {
@@ -50,6 +55,45 @@ export default function VerificationSessionPage() {
           toast.error('Failed to get location. Please enable location services.');
         }
       );
+    }
+  };
+
+  const checkActiveSession = async () => {
+    try {
+      const response = await fetch('/api/verification/session/cancel');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.hasActiveSession) {
+          setExistingSession(data.activeSession);
+          toast.error('You have an active verification session. Please complete or cancel it first.');
+        }
+      }
+    } catch (error) {
+      console.error('Error checking active session:', error);
+    } finally {
+      setCheckingSession(false);
+    }
+  };
+
+  const cancelExistingSession = async () => {
+    if (!existingSession) return;
+
+    try {
+      const response = await fetch('/api/verification/session/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: existingSession.sessionId }),
+      });
+
+      if (response.ok) {
+        setExistingSession(null);
+        toast.success('Previous session cancelled successfully');
+      } else {
+        toast.error('Failed to cancel session');
+      }
+    } catch (error) {
+      console.error('Error cancelling session:', error);
+      toast.error('Error cancelling session');
     }
   };
 
@@ -116,7 +160,14 @@ export default function VerificationSessionPage() {
         // Start automatic image capture
         startImageCapture();
       } else {
-        toast.error('Failed to start session');
+        const errorData = await response.json();
+        if (response.status === 409) {
+          // Conflict - existing session
+          setExistingSession(errorData.existingSession);
+          toast.error(errorData.error);
+        } else {
+          toast.error(errorData.error || 'Failed to start session');
+        }
       }
     } catch (error) {
       console.error('Error starting session:', error);
@@ -280,6 +331,41 @@ export default function VerificationSessionPage() {
           </div>
         </div>
 
+        {/* Existing Session Warning */}
+        {existingSession && (
+          <div className="mb-8 bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-lg font-medium text-yellow-800">Active Session Found</h3>
+                <p className="mt-1 text-sm text-yellow-700">
+                  You have an active verification session for <strong>{existingSession.className}</strong> 
+                  started at {new Date(existingSession.startTime).toLocaleTimeString()}.
+                  You must complete or cancel this session before starting a new one.
+                </p>
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={cancelExistingSession}
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
+                  >
+                    Cancel Existing Session
+                  </button>
+                  <button
+                    onClick={() => router.push(`/dashboard/teacher/verification/results?sessionId=${existingSession.sessionId}`)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
+                  >
+                    View Session Details
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Session Status */}
         {sessionActive && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -397,14 +483,14 @@ export default function VerificationSessionPage() {
               
               <button
                 onClick={startSession}
-                disabled={!cameraReady || !location}
+                disabled={!cameraReady || !location || existingSession}
                 className="flex-1 px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Start Verification Session
+                {existingSession ? 'Complete Existing Session First' : 'Start Verification Session'}
               </button>
             </div>
           </div>

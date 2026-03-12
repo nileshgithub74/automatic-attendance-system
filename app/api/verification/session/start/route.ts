@@ -12,10 +12,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is a teacher
+    // Check if user is a teacher or admin
     const role = user.publicMetadata?.role as string;
-    if (role !== 'Teacher' && role !== 'teacher') {
-      return NextResponse.json({ error: 'Only teachers can start verification sessions' }, { status: 403 });
+    if (role !== 'Teacher' && role !== 'teacher' && role !== 'Admin' && role !== 'admin') {
+      return NextResponse.json({ error: 'Only teachers and admins can start verification sessions' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -34,6 +34,24 @@ export async function POST(request: NextRequest) {
     const db = await getDatabase();
     if (!db) {
       return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    }
+
+    // Check if user already has an active session
+    const existingSession = await db.collection('verification_sessions').findOne({
+      teacherId: userId,
+      status: 'active'
+    });
+
+    if (existingSession) {
+      return NextResponse.json({ 
+        error: 'You already have an active verification session. Please complete or cancel the existing session first.',
+        existingSession: {
+          sessionId: existingSession.sessionId,
+          startTime: existingSession.startTime,
+          endTime: existingSession.endTime,
+          className: existingSession.className
+        }
+      }, { status: 409 });
     }
 
     // Generate session ID
