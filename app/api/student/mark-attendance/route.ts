@@ -208,18 +208,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // STEP 4: MARK ATTENDANCE AS PENDING (waiting for teacher AI verification)
+    // STEP 4: MARK ATTENDANCE AS PRESENT (teacher AI verification will later confirm/override)
     const attendanceRecord = {
       studentId: studentId.toString(),
       studentName,
       class: studentClass,
       rollNo,
       date: todayDate,
-      status: 'pending', // pending, present, absent (will be updated by teacher AI verification)
+      status: 'present', // Mark as present initially, AI verification will confirm/override
       markedAt: new Date(),
       markedBy: 'Self (Student)',
       method: 'self_marked',
-      teacherName: 'Pending AI Verification',
+      teacherName: 'Self Marked - Awaiting AI Verification',
       
       // Face image if provided
       capturedFaceImageUrl: faceImageUrl,
@@ -257,10 +257,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Attendance marked! Waiting for teacher AI verification to confirm your presence in class.',
+      message: 'Attendance marked as PRESENT! Teacher AI verification will confirm your presence in class.',
       record: {
         date: attendanceRecord.date,
-        status: 'pending',
+        status: 'present',
         id: result.insertedId,
         location: locationLog ? {
           distanceFromClassroom: Math.round(distanceFromClass || 0),

@@ -212,7 +212,7 @@ export default function MarkAttendancePage() {
       if (response.ok) {
         setMessage({ 
           type: 'success', 
-          text: data.message || 'Attendance marked! Your teacher will verify your presence using AI camera verification.'
+          text: data.message || 'Attendance marked as PRESENT! Your teacher will verify your actual presence using AI camera verification.'
         });
         setCapturedImage(null);
         setTimeout(() => {
@@ -426,10 +426,10 @@ export default function MarkAttendancePage() {
                 <div>
                   <h3 className="text-sm font-medium text-blue-800 mb-1">How it works:</h3>
                   <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Capture your photo to mark attendance</li>
+                    <li>• Capture your photo to mark attendance as PRESENT</li>
                     <li>• Your location and network details will be recorded</li>
-                    <li>• Status will be "Pending" until teacher verification</li>
-                    <li>• Teacher will use AI camera to verify your presence in class</li>
+                    <li>• Teacher will use AI camera to verify your actual presence</li>
+                    <li>• Final status will be confirmed based on classroom verification</li>
                   </ul>
                 </div>
               </div>

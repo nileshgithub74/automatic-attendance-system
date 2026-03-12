@@ -79,20 +79,20 @@ export async function POST(request: NextRequest) {
       // Store verification record
       await db.collection('attendance_verifications').insertOne(verificationRecord);
 
-      // Check if student has pending attendance for today
+      // Check if student has any attendance record for today (self-marked or not)
       const existingAttendance = await db.collection('attendance').findOne({
         studentId: studentId.toString(),
         date: today,
       });
 
       if (existingAttendance) {
-        // Update existing attendance (including pending ones)
+        // Update existing attendance (including self-marked ones)
         await db.collection('attendance').updateOne(
           { studentId: studentId.toString(), date: today },
           {
             $set: {
               status: finalStatus === 'flagged' ? 'present' : finalStatus,
-              method: 'ai_verification',
+              method: existingAttendance.method === 'self_marked' ? 'self_marked_ai_verified' : 'ai_verification',
               verificationSessionId: sessionId,
               detectionPercentage,
               averageSimilarity,
@@ -101,11 +101,14 @@ export async function POST(request: NextRequest) {
               teacherName: `${user.firstName} ${user.lastName}`,
               verifiedAt: new Date(),
               updatedAt: new Date(),
+              // Keep original self-marked data if it exists
+              originalStatus: existingAttendance.method === 'self_marked' ? existingAttendance.status : undefined,
+              originalMarkedAt: existingAttendance.method === 'self_marked' ? existingAttendance.markedAt : undefined,
             },
           }
         );
       } else {
-        // Insert new attendance record for students not marked yet
+        // Insert new attendance record for students who didn't mark themselves
         const attendanceRecord = {
           studentId: studentId.toString(),
           studentName,
@@ -129,7 +132,9 @@ export async function POST(request: NextRequest) {
         studentName,
         status: finalStatus,
         detectionPercentage,
-        wasPending: existingAttendance?.status === 'pending',
+        wasSelfMarked: existingAttendance?.method === 'self_marked',
+        originalStatus: existingAttendance?.method === 'self_marked' ? existingAttendance.status : null,
+        finalStatus: finalStatus,
       });
     }
 
