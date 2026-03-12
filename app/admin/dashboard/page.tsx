@@ -61,6 +61,8 @@ export default function AdminDashboard() {
     teacherMarkedToday: 0,
     totalRecords: 0
   });
+  const [selectedRecord, setSelectedRecord] = useState<any>(null);
+  const [showRecordDetails, setShowRecordDetails] = useState(false);
   const [faceRegistrations, setFaceRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
