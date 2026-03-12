@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getDatabase } from '@/lib/mongodb';
 
 // Configure route to handle large payloads
 export const runtime = 'nodejs';
@@ -19,8 +19,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
     
     const registration = await db.collection('face_registrations').findOne({
       studentId: studentId
@@ -86,24 +92,41 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Validation passed, connecting to database...');
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      console.error('❌ Database connection failed');
+      return NextResponse.json(
+        { message: 'Database connection failed. Please try again.' },
+        { status: 500 }
+      );
+    }
 
     // Upload images to Cloudinary
     console.log('📤 Uploading images to Cloudinary...');
     const { uploadMultipleToCloudinary } = await import('@/lib/cloudinary');
     
-    const uploadResults = await uploadMultipleToCloudinary(
-      images,
-      `face-registrations/${studentId}`
-    );
+    let uploadResults;
+    try {
+      uploadResults = await uploadMultipleToCloudinary(
+        images,
+        `face-registrations/${studentId}`
+      );
+      console.log('📤 Upload results:', uploadResults.map(r => ({ success: r.success, error: r.error })));
+    } catch (uploadError) {
+      console.error('❌ Cloudinary upload error:', uploadError);
+      return NextResponse.json(
+        { message: 'Failed to upload images to cloud storage: ' + uploadError.message },
+        { status: 500 }
+      );
+    }
 
     // Check if all uploads succeeded
     const failedUploads = uploadResults.filter(r => !r.success);
     if (failedUploads.length > 0) {
       console.error('❌ Some images failed to upload:', failedUploads);
       return NextResponse.json(
-        { message: 'Failed to upload some images to cloud storage' },
+        { message: `Failed to upload ${failedUploads.length} out of ${images.length} images to cloud storage` },
         { status: 500 }
       );
     }
@@ -134,45 +157,63 @@ export async function POST(request: NextRequest) {
     if (existingRegistration) {
       // Update existing registration
       console.log('🔄 Updating existing registration...');
-      await db.collection('face_registrations').updateOne(
-        { studentId: studentId },
-        {
-          $set: {
-            ...registrationData,
-            previousRegistrationDate: existingRegistration.registeredAt
+      try {
+        await db.collection('face_registrations').updateOne(
+          { studentId: studentId },
+          {
+            $set: {
+              ...registrationData,
+              previousRegistrationDate: existingRegistration.registeredAt
+            }
           }
-        }
-      );
+        );
 
-      // Update user record to mark face as registered
-      await db.collection('users').updateOne(
-        { id: parseInt(studentId) },
-        { $set: { faceRegistered: true, faceRegisteredAt: new Date() } }
-      );
+        // Update user record to mark face as registered
+        const userUpdateResult = await db.collection('users').updateOne(
+          { id: parseInt(studentId) },
+          { $set: { faceRegistered: true, faceRegisteredAt: new Date() } }
+        );
+        console.log('👤 User update result:', userUpdateResult.modifiedCount > 0 ? 'Success' : 'No changes');
 
-      console.log('✅ Registration updated successfully');
-      return NextResponse.json({
-        success: true,
-        message: 'Face registration updated successfully',
-        isUpdate: true
-      });
+        console.log('✅ Registration updated successfully');
+        return NextResponse.json({
+          success: true,
+          message: 'Face registration updated successfully',
+          isUpdate: true
+        });
+      } catch (dbError) {
+        console.error('❌ Database update error:', dbError);
+        return NextResponse.json(
+          { message: 'Failed to update registration in database: ' + dbError.message },
+          { status: 500 }
+        );
+      }
     } else {
       // Create new registration
       console.log('➕ Creating new registration...');
-      await db.collection('face_registrations').insertOne(registrationData);
+      try {
+        await db.collection('face_registrations').insertOne(registrationData);
 
-      // Update user record to mark face as registered
-      await db.collection('users').updateOne(
-        { id: parseInt(studentId) },
-        { $set: { faceRegistered: true, faceRegisteredAt: new Date() } }
-      );
+        // Update user record to mark face as registered
+        const userUpdateResult = await db.collection('users').updateOne(
+          { id: parseInt(studentId) },
+          { $set: { faceRegistered: true, faceRegisteredAt: new Date() } }
+        );
+        console.log('👤 User update result:', userUpdateResult.modifiedCount > 0 ? 'Success' : 'No changes');
 
-      console.log('✅ Registration created successfully');
-      return NextResponse.json({
-        success: true,
-        message: 'Face registration completed successfully',
-        isUpdate: false
-      });
+        console.log('✅ Registration created successfully');
+        return NextResponse.json({
+          success: true,
+          message: 'Face registration completed successfully',
+          isUpdate: false
+        });
+      } catch (dbError) {
+        console.error('❌ Database insert error:', dbError);
+        return NextResponse.json(
+          { message: 'Failed to save registration in database: ' + dbError.message },
+          { status: 500 }
+        );
+      }
     }
   } catch (error: any) {
     console.error('❌ Error registering face:', error);
@@ -205,8 +246,14 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
     
     const result = await db.collection('face_registrations').deleteOne({
       studentId: studentId
