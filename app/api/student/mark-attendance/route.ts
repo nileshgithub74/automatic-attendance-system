@@ -292,21 +292,66 @@ export async function POST(request: NextRequest) {
       console.log('Network logged:', { riskScore, threatLevel, flags: networkFlags });
     }
 
-    // STEP 3: FACE VERIFICATION
-    // Simulate face verification (in production, use actual face-api.js)
-    const faceVerificationPassed = true; // Simulate successful verification
+    // STEP 3: FACE VERIFICATION - Real Implementation
+    console.log('Starting face verification...');
     
-    if (!faceVerificationPassed) {
+    // Import face verification utility
+    const { compareWithMultipleFaces } = await import('@/lib/faceVerification');
+    
+    // Get all registered face images for this student
+    const registeredImages = faceRegistration.images || [];
+    
+    if (registeredImages.length === 0) {
       return NextResponse.json(
         { 
-          error: 'Face verification failed. The face does not match the registered face.',
-          verificationFailed: true
+          error: 'No registered face images found. Please register your face first.',
+          needsRegistration: true
+        },
+        { status: 400 }
+      );
+    }
+    
+    // Compare captured face with all registered faces
+    const verificationResult = await compareWithMultipleFaces(faceImage, registeredImages);
+    
+    console.log('Face verification result:', {
+      match: verificationResult.match,
+      bestMatch: verificationResult.bestMatch,
+      averageSimilarity: verificationResult.averageSimilarity,
+      matchedIndex: verificationResult.matchedIndex
+    });
+    
+    if (!verificationResult.match) {
+      return NextResponse.json(
+        { 
+          error: `Face verification failed. Similarity: ${Math.round(verificationResult.bestMatch * 100)}%. The face does not match the registered face.`,
+          verificationFailed: true,
+          similarity: verificationResult.bestMatch
         },
         { status: 403 }
       );
     }
 
-    console.log('Face verification successful for student:', studentName);
+    console.log('Face verification successful for student:', studentName, `(${Math.round(verificationResult.bestMatch * 100)}% match)`);
+
+    // Upload captured face image to Cloudinary
+    console.log('Uploading captured face to Cloudinary...');
+    const { uploadToCloudinary } = await import('@/lib/cloudinary');
+    
+    const todayDate = new Date().toISOString().split('T')[0];
+    const timestamp = Date.now();
+    const uploadResult = await uploadToCloudinary(
+      faceImage,
+      `attendance-captures/${todayDate}`,
+      `${studentId}_${timestamp}`
+    );
+
+    if (!uploadResult.success) {
+      console.error('Failed to upload to Cloudinary:', uploadResult.error);
+      // Continue anyway, we have the verification
+    }
+
+    console.log('Captured face uploaded:', uploadResult.secureUrl || 'Upload failed');
 
     // STEP 4: AUTOMATIC ATTENDANCE DECISION
     // Determine if student should be marked present or absent
@@ -337,7 +382,22 @@ export async function POST(request: NextRequest) {
       markedBy: 'Self (Face Recognition)',
       method: 'face_recognition',
       teacherName: 'Self (Face Recognition)',
-      faceImageStored: true,
+      
+      // Store captured face image URL from Cloudinary
+      capturedFaceImageUrl: uploadResult.secureUrl || null,
+      cloudinaryPublicId: uploadResult.publicId || null,
+      capturedFaceImage: null, // Don't store base64 anymore
+      faceImageStored: uploadResult.success,
+      cloudStorage: 'cloudinary',
+      
+      // Face verification details
+      faceVerification: {
+        verified: verificationResult.match,
+        similarity: verificationResult.bestMatch,
+        averageSimilarity: verificationResult.averageSimilarity,
+        matchedImageIndex: verificationResult.matchedIndex,
+        verifiedAt: new Date()
+      },
       
       // Location data
       location: locationLog ? {

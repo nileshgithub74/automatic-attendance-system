@@ -43,14 +43,30 @@ export async function POST(request: NextRequest) {
     const base64 = Buffer.from(buffer).toString('base64');
     const imageData = `data:${image.type};base64,${base64}`;
 
+    // Upload to Cloudinary
+    const { uploadToCloudinary } = await import('@/lib/cloudinary');
+    const uploadResult = await uploadToCloudinary(
+      imageData,
+      `verification-sessions/${sessionId}`,
+      `capture_${sequenceNumber}_${Date.now()}`
+    );
+
+    if (!uploadResult.success) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to upload image to cloud storage' },
+        { status: 500 }
+      );
+    }
+
     // Get image dimensions
     const imageSize = buffer.byteLength;
 
     // Create captured image document
     const capturedImage = {
       sessionId,
-      imageUrl: null, // Set this if using cloud storage
-      imageData, // Store base64 for now
+      imageUrl: uploadResult.secureUrl, // Cloudinary URL
+      imageData: null, // Don't store base64 in MongoDB anymore
+      cloudinaryPublicId: uploadResult.publicId,
       captureTime: new Date(timestamp),
       sequenceNumber,
       processed: false,
@@ -62,6 +78,7 @@ export async function POST(request: NextRequest) {
         width: 1280, // Get from actual image if needed
         height: 720
       },
+      cloudStorage: 'cloudinary',
       createdAt: new Date()
     };
 
@@ -69,12 +86,13 @@ export async function POST(request: NextRequest) {
     const result = await db.collection('capturedImages').insertOne(capturedImage);
     const imageId = result.insertedId.toString();
 
-    // Trigger async processing
-    processImageAsync(imageId, sessionId, imageData);
+    // Trigger async processing (fetch image from Cloudinary URL)
+    processImageAsync(imageId, sessionId, uploadResult.secureUrl!);
 
     return NextResponse.json({
       success: true,
       imageId,
+      imageUrl: uploadResult.secureUrl,
       uploaded: true,
       processing: true
     });

@@ -89,6 +89,29 @@ export async function POST(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db('attendance_system');
 
+    // Upload images to Cloudinary
+    console.log('📤 Uploading images to Cloudinary...');
+    const { uploadMultipleToCloudinary } = await import('@/lib/cloudinary');
+    
+    const uploadResults = await uploadMultipleToCloudinary(
+      images,
+      `face-registrations/${studentId}`
+    );
+
+    // Check if all uploads succeeded
+    const failedUploads = uploadResults.filter(r => !r.success);
+    if (failedUploads.length > 0) {
+      console.error('❌ Some images failed to upload:', failedUploads);
+      return NextResponse.json(
+        { message: 'Failed to upload some images to cloud storage' },
+        { status: 500 }
+      );
+    }
+
+    // Get image URLs
+    const imageUrls = uploadResults.map(r => r.secureUrl).filter(Boolean) as string[];
+    console.log('✅ Images uploaded successfully:', imageUrls.length);
+
     // Check if registration already exists
     const existingRegistration = await db.collection('face_registrations').findOne({
       studentId: studentId
@@ -99,11 +122,13 @@ export async function POST(request: NextRequest) {
     const registrationData = {
       studentId,
       studentName,
-      images,
+      images, // Keep base64 as backup
+      imageUrls, // Store Cloudinary URLs
       imageCount: images.length,
       registeredAt: new Date(),
       updatedAt: new Date(),
-      status: 'active'
+      status: 'active',
+      cloudStorage: 'cloudinary'
     };
 
     if (existingRegistration) {
