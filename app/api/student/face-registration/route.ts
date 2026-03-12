@@ -144,6 +144,12 @@ export async function POST(request: NextRequest) {
         }
       );
 
+      // Update user record to mark face as registered
+      await db.collection('users').updateOne(
+        { id: parseInt(studentId) },
+        { $set: { faceRegistered: true, faceRegisteredAt: new Date() } }
+      );
+
       console.log('✅ Registration updated successfully');
       return NextResponse.json({
         success: true,
@@ -154,6 +160,12 @@ export async function POST(request: NextRequest) {
       // Create new registration
       console.log('➕ Creating new registration...');
       await db.collection('face_registrations').insertOne(registrationData);
+
+      // Update user record to mark face as registered
+      await db.collection('users').updateOne(
+        { id: parseInt(studentId) },
+        { $set: { faceRegistered: true, faceRegisteredAt: new Date() } }
+      );
 
       console.log('✅ Registration created successfully');
       return NextResponse.json({

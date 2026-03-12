@@ -102,17 +102,14 @@ export default function AdminRegisterFacePage() {
     try {
       const ids = getStudentIds(selectedStudent.id);
       
-      const response = await fetch('/api/face/register', {
+      const response = await fetch('/api/student/face-registration', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           studentId: ids.stringId,
-          numericId: ids.numericId,
-          clerkId: selectedStudent.id,
           studentName: selectedStudent.name,
-          studentEmail: selectedStudent.email,
           images: capturedImages,
         }),
       });
@@ -121,7 +118,7 @@ export default function AdminRegisterFacePage() {
 
       if (data.success) {
         toast.dismiss(loadingToast);
-        toast.success(`✓ Face registered for ${selectedStudent.name}!`);
+        toast.success(`✓ Face ${data.isUpdate ? 'updated' : 'registered'} for ${selectedStudent.name}!`);
         setCapturedImages([]);
         setSelectedStudent(null);
         fetchStudents();
