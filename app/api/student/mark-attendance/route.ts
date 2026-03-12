@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getDatabase } from '@/lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication (Clerk or custom)
     const { userId } = await auth();
     const headerStudentId = request.headers.get('x-student-id');
     
@@ -26,41 +26,27 @@ export async function POST(request: NextRequest) {
       networkInfo 
     } = body;
 
-    if (!studentId || !studentName || !faceImage) {
+    if (!studentId || !studentName) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Verify the student is marking their own attendance
-    const authenticatedStudentId = userId || headerStudentId;
-    if (studentId.toString() !== authenticatedStudentId) {
-      return NextResponse.json(
-        { error: 'You can only mark your own attendance' },
-        { status: 403 }
-      );
+    const db = await getDatabase();
+    if (!db) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
     }
-
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    
     const attendanceCollection = db.collection('attendance');
-    const studentsCollection = db.collection('students');
     const locationLogsCollection = db.collection('location_logs');
     const networkLogsCollection = db.collection('network_logs');
 
     // Check if attendance already marked today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
+    const todayDate = new Date().toISOString().split('T')[0];
     const existingAttendance = await attendanceCollection.findOne({
       studentId: studentId.toString(),
-      date: {
-        $gte: today,
-        $lt: tomorrow
-      }
+      date: todayDate
     });
 
     if (existingAttendance) {
@@ -70,98 +56,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the student's registered face from database
-    let student = await studentsCollection.findOne({
-      $or: [
-        { _id: studentId.toString() },
-        { id: studentId.toString() },
-        { clerkId: studentId.toString() }
-      ]
-    });
-
-    // Also check users collection
-    if (!student) {
-      const usersCollection = db.collection('users');
-      student = await usersCollection.findOne({
-        $or: [
-          { _id: studentId.toString() },
-          { id: studentId.toString() },
-          { clerkId: studentId.toString() }
-        ]
-      });
-    }
-
-    // Also check face_registrations collection
-    if (!student) {
-      const faceRegistrationsCollection = db.collection('face_registrations');
-      const faceReg = await faceRegistrationsCollection.findOne({
-        $or: [
-          { studentId: studentId.toString() },
-          { clerkId: studentId.toString() }
-        ]
-      });
-      
-      if (faceReg) {
-        student = {
-          _id: faceReg.studentId,
-          name: faceReg.studentName,
-          email: faceReg.studentEmail,
-          class: faceReg.class,
-          registeredFace: faceReg.images?.[0]
-        };
-      }
-    }
-
-    if (!student) {
-      console.error('Student not found:', { studentId, studentName });
-      return NextResponse.json(
-        { error: 'Student not found in database. Please contact admin to register your face.' },
-        { status: 404 }
-      );
-    }
-
-    console.log('Student found:', student.name || student.email);
-
-    // Check if student has a registered face
-    const faceRegistrationsCollection = db.collection('face_registrations');
-    const faceRegistration = await faceRegistrationsCollection.findOne({
-      $or: [
-        { studentId: studentId.toString() },
-        { clerkId: studentId.toString() },
-        { studentId: student._id?.toString() }
-      ]
-    });
-
-    if (!faceRegistration || !faceRegistration.images || faceRegistration.images.length === 0) {
-      console.error('No face registration found for student:', studentId);
-      return NextResponse.json(
-        { 
-          error: 'No registered face found. Please register your face first.',
-          needsRegistration: true 
-        },
-        { status: 400 }
-      );
-    }
-
-    console.log('Face registration found with', faceRegistration.images.length, 'images');
-
-    const registeredFace = faceRegistration.images[0];
-
     // STEP 1: LOG LOCATION DATA
     let locationLog = null;
     let distanceFromClass = null;
     let isInClassroom = false;
     
     if (location && location.latitude && location.longitude) {
-      // Define classroom location (you can store this in database per class)
       const classroomLocation = {
-        latitude: 28.6139, // Example: Delhi coordinates
+        latitude: 28.6139,
         longitude: 77.2090,
-        radius: 50 // 50 meters radius
+        radius: 100 // 100 meters radius
       };
 
       // Calculate distance using Haversine formula
-      const R = 6371e3; // Earth radius in meters
+      const R = 6371e3;
       const φ1 = classroomLocation.latitude * Math.PI / 180;
       const φ2 = location.latitude * Math.PI / 180;
       const Δφ = (location.latitude - classroomLocation.latitude) * Math.PI / 180;
@@ -172,7 +80,7 @@ export async function POST(request: NextRequest) {
                 Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-      distanceFromClass = R * c; // Distance in meters
+      distanceFromClass = R * c;
       isInClassroom = distanceFromClass <= classroomLocation.radius;
 
       locationLog = {
@@ -193,7 +101,7 @@ export async function POST(request: NextRequest) {
           platform: location.platform || 'Unknown',
           isMobile: /mobile/i.test(request.headers.get('user-agent') || '')
         },
-        attendanceType: 'face_recognition',
+        attendanceType: 'self_marked',
         createdAt: new Date()
       };
 
@@ -205,12 +113,11 @@ export async function POST(request: NextRequest) {
     let networkLog = null;
     let networkFlags = [];
     
-    if (networkInfo || true) { // Always log network info
+    if (networkInfo || true) {
       const ipAddress = request.headers.get('x-forwarded-for') || 
                        request.headers.get('x-real-ip') || 
                        'Unknown';
 
-      // Perform VPN/Proxy detection
       let isVPN = false;
       let isProxy = false;
       let isTor = false;
@@ -221,8 +128,6 @@ export async function POST(request: NextRequest) {
       let riskScore = 0;
 
       try {
-        // Call IP intelligence API (you can use ipinfo.io, iphub.info, etc.)
-        // For now, we'll use basic detection
         const response = await fetch(`https://ipapi.co/${ipAddress}/json/`);
         if (response.ok) {
           const data = await response.json();
@@ -230,7 +135,6 @@ export async function POST(request: NextRequest) {
           city = data.city || 'Unknown';
           isp = data.org || 'Unknown';
           
-          // Check for VPN/Proxy indicators
           if (data.threat && data.threat.is_proxy) isProxy = true;
           if (data.threat && data.threat.is_tor) isTor = true;
           if (isp.toLowerCase().includes('vpn') || isp.toLowerCase().includes('proxy')) {
@@ -242,11 +146,9 @@ export async function POST(request: NextRequest) {
         console.error('IP detection error:', error);
       }
 
-      // Calculate network metrics
-      const latency = networkInfo?.latency || Math.random() * 100; // ms
-      const jitter = networkInfo?.jitter || Math.random() * 20; // ms
+      const latency = networkInfo?.latency || Math.random() * 100;
+      const jitter = networkInfo?.jitter || Math.random() * 20;
       
-      // Calculate risk score
       if (isVPN) riskScore += 40;
       if (isProxy) riskScore += 40;
       if (isTor) riskScore += 60;
@@ -284,7 +186,7 @@ export async function POST(request: NextRequest) {
         connectionType: networkInfo?.connectionType || 'Unknown',
         wifiSSID: networkInfo?.wifiSSID || 'Unknown',
         timestamp: new Date(),
-        attendanceType: 'face_recognition',
+        attendanceType: 'self_marked',
         createdAt: new Date()
       };
 
@@ -292,112 +194,35 @@ export async function POST(request: NextRequest) {
       console.log('Network logged:', { riskScore, threatLevel, flags: networkFlags });
     }
 
-    // STEP 3: FACE VERIFICATION - Real Implementation
-    console.log('Starting face verification...');
-    
-    // Import face verification utility
-    const { compareWithMultipleFaces } = await import('@/lib/faceVerification');
-    
-    // Get all registered face images for this student
-    const registeredImages = faceRegistration.images || [];
-    
-    if (registeredImages.length === 0) {
-      return NextResponse.json(
-        { 
-          error: 'No registered face images found. Please register your face first.',
-          needsRegistration: true
-        },
-        { status: 400 }
+    // STEP 3: UPLOAD FACE IMAGE TO CLOUDINARY (if provided)
+    let faceImageUrl = null;
+    if (faceImage) {
+      const todayDate = new Date().toISOString().split('T')[0];
+      const uploadResult = await uploadToCloudinary(
+        faceImage,
+        `attendance-captures/${todayDate}`,
+        `${studentId}_${Date.now()}`
       );
-    }
-    
-    // Compare captured face with all registered faces
-    const verificationResult = await compareWithMultipleFaces(faceImage, registeredImages);
-    
-    console.log('Face verification result:', {
-      match: verificationResult.match,
-      bestMatch: verificationResult.bestMatch,
-      averageSimilarity: verificationResult.averageSimilarity,
-      matchedIndex: verificationResult.matchedIndex
-    });
-    
-    if (!verificationResult.match) {
-      return NextResponse.json(
-        { 
-          error: `Face verification failed. Similarity: ${Math.round(verificationResult.bestMatch * 100)}%. The face does not match the registered face.`,
-          verificationFailed: true,
-          similarity: verificationResult.bestMatch
-        },
-        { status: 403 }
-      );
+      if (uploadResult.success) {
+        faceImageUrl = uploadResult.secureUrl;
+      }
     }
 
-    console.log('Face verification successful for student:', studentName, `(${Math.round(verificationResult.bestMatch * 100)}% match)`);
-
-    // Upload captured face image to Cloudinary
-    console.log('Uploading captured face to Cloudinary...');
-    const { uploadToCloudinary } = await import('@/lib/cloudinary');
-    
-    const todayDate = new Date().toISOString().split('T')[0];
-    const timestamp = Date.now();
-    const uploadResult = await uploadToCloudinary(
-      faceImage,
-      `attendance-captures/${todayDate}`,
-      `${studentId}_${timestamp}`
-    );
-
-    if (!uploadResult.success) {
-      console.error('Failed to upload to Cloudinary:', uploadResult.error);
-      // Continue anyway, we have the verification
-    }
-
-    console.log('Captured face uploaded:', uploadResult.secureUrl || 'Upload failed');
-
-    // STEP 4: AUTOMATIC ATTENDANCE DECISION
-    // Determine if student should be marked present or absent
-    let attendanceStatus: 'present' | 'absent' | 'flagged' = 'present';
-    let autoDecisionReason = 'Face verified successfully';
-    
-    // Auto-mark absent if critical conditions fail
-    if (!isInClassroom && distanceFromClass && distanceFromClass > 100) {
-      attendanceStatus = 'absent';
-      autoDecisionReason = `Student is ${Math.round(distanceFromClass)}m away from classroom`;
-    } else if (riskScore >= 70) {
-      attendanceStatus = 'flagged';
-      autoDecisionReason = `High security risk detected (score: ${riskScore})`;
-    } else if (networkFlags.includes('VPN_DETECTED') || networkFlags.includes('PROXY_DETECTED')) {
-      attendanceStatus = 'flagged';
-      autoDecisionReason = 'VPN/Proxy detected - requires manual verification';
-    }
-
-    // STEP 5: MARK ATTENDANCE
+    // STEP 4: MARK ATTENDANCE AS PENDING (waiting for teacher AI verification)
     const attendanceRecord = {
       studentId: studentId.toString(),
       studentName,
       class: studentClass,
       rollNo,
-      date: new Date(),
-      status: attendanceStatus,
+      date: todayDate,
+      status: 'pending', // pending, present, absent (will be updated by teacher AI verification)
       markedAt: new Date(),
-      markedBy: 'Self (Face Recognition)',
-      method: 'face_recognition',
-      teacherName: 'Self (Face Recognition)',
+      markedBy: 'Self (Student)',
+      method: 'self_marked',
+      teacherName: 'Pending AI Verification',
       
-      // Store captured face image URL from Cloudinary
-      capturedFaceImageUrl: uploadResult.secureUrl || null,
-      cloudinaryPublicId: uploadResult.publicId || null,
-      capturedFaceImage: null, // Don't store base64 anymore
-      faceImageStored: uploadResult.success,
-      cloudStorage: 'cloudinary',
-      
-      // Face verification details
-      faceVerification: {
-        verified: verificationResult.match,
-        similarity: verificationResult.bestMatch,
-        averageSimilarity: verificationResult.averageSimilarity,
-        matchedImageIndex: verificationResult.matchedIndex,
-        verifiedAt: new Date()
-      },
+      // Face image if provided
+      capturedFaceImageUrl: faceImageUrl,
       
       // Location data
       location: locationLog ? {
@@ -425,33 +250,18 @@ export async function POST(request: NextRequest) {
         connectionType: networkLog.connectionType
       } : null,
       
-      // Auto-decision metadata
-      autoDecision: {
-        status: attendanceStatus,
-        reason: autoDecisionReason,
-        flags: networkFlags,
-        timestamp: new Date()
-      },
-      
       createdAt: new Date()
     };
 
-    console.log('Inserting attendance record:', { status: attendanceStatus, reason: autoDecisionReason });
     const result = await attendanceCollection.insertOne(attendanceRecord);
-    console.log('Attendance record inserted with ID:', result.insertedId);
 
     return NextResponse.json({
       success: true,
-      message: `Attendance ${attendanceStatus === 'present' ? 'marked as PRESENT' : attendanceStatus === 'flagged' ? 'FLAGGED for review' : 'marked as ABSENT'} - ${autoDecisionReason}`,
+      message: 'Attendance marked! Waiting for teacher AI verification to confirm your presence in class.',
       record: {
         date: attendanceRecord.date,
-        status: attendanceStatus,
+        status: 'pending',
         id: result.insertedId,
-        autoDecision: {
-          status: attendanceStatus,
-          reason: autoDecisionReason,
-          flags: networkFlags
-        },
         location: locationLog ? {
           distanceFromClassroom: Math.round(distanceFromClass || 0),
           isInClassroom

@@ -79,46 +79,48 @@ export async function POST(request: NextRequest) {
       // Store verification record
       await db.collection('attendance_verifications').insertOne(verificationRecord);
 
-      // Update main attendance record
-      const attendanceRecord = {
-        studentId: parseInt(studentId) || studentId,
-        studentName,
-        status: finalStatus === 'flagged' ? 'present' : finalStatus, // Flagged students marked as present but flagged
-        date: today,
-        teacherId: userId,
-        teacherName: `${user.firstName} ${user.lastName}`,
-        markedAt: new Date().toISOString(),
-        method: 'ai_verification',
-        verificationSessionId: sessionId,
-        detectionPercentage,
-        averageSimilarity,
-        flags: flags || [],
-      };
-
-      // Check if attendance already exists for this student today
+      // Check if student has pending attendance for today
       const existingAttendance = await db.collection('attendance').findOne({
-        studentId: attendanceRecord.studentId,
+        studentId: studentId.toString(),
         date: today,
       });
 
       if (existingAttendance) {
-        // Update existing attendance
+        // Update existing attendance (including pending ones)
         await db.collection('attendance').updateOne(
-          { studentId: attendanceRecord.studentId, date: today },
+          { studentId: studentId.toString(), date: today },
           {
             $set: {
-              status: attendanceRecord.status,
+              status: finalStatus === 'flagged' ? 'present' : finalStatus,
               method: 'ai_verification',
               verificationSessionId: sessionId,
               detectionPercentage,
               averageSimilarity,
-              flags: attendanceRecord.flags,
-              updatedAt: new Date().toISOString(),
+              flags: flags || [],
+              teacherId: userId,
+              teacherName: `${user.firstName} ${user.lastName}`,
+              verifiedAt: new Date(),
+              updatedAt: new Date(),
             },
           }
         );
       } else {
-        // Insert new attendance record
+        // Insert new attendance record for students not marked yet
+        const attendanceRecord = {
+          studentId: studentId.toString(),
+          studentName,
+          status: finalStatus === 'flagged' ? 'present' : finalStatus,
+          date: today,
+          teacherId: userId,
+          teacherName: `${user.firstName} ${user.lastName}`,
+          markedAt: new Date(),
+          method: 'ai_verification',
+          verificationSessionId: sessionId,
+          detectionPercentage,
+          averageSimilarity,
+          flags: flags || [],
+          createdAt: new Date(),
+        };
         await db.collection('attendance').insertOne(attendanceRecord);
       }
 
@@ -127,6 +129,7 @@ export async function POST(request: NextRequest) {
         studentName,
         status: finalStatus,
         detectionPercentage,
+        wasPending: existingAttendance?.status === 'pending',
       });
     }
 

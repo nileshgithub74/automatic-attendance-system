@@ -210,20 +210,10 @@ export default function MarkAttendancePage() {
       const data = await response.json();
 
       if (response.ok) {
-        // Show detailed result message
-        let resultMessage = data.message || 'Attendance marked successfully!';
-        
-        if (data.record?.autoDecision) {
-          resultMessage += `\n\nStatus: ${data.record.autoDecision.status.toUpperCase()}`;
-          if (data.record.location) {
-            resultMessage += `\nDistance from classroom: ${data.record.location.distanceFromClassroom}m`;
-          }
-          if (data.record.networkSecurity) {
-            resultMessage += `\nSecurity Risk: ${data.record.networkSecurity.threatLevel.toUpperCase()}`;
-          }
-        }
-        
-        setMessage({ type: 'success', text: resultMessage });
+        setMessage({ 
+          type: 'success', 
+          text: data.message || 'Attendance marked! Your teacher will verify your presence using AI camera verification.'
+        });
         setCapturedImage(null);
         setTimeout(() => {
           router.push('/dashboard/student');
@@ -303,7 +293,7 @@ export default function MarkAttendancePage() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Mark Attendance</h1>
-              <p className="text-gray-600 mt-1">Use face recognition to mark your attendance</p>
+              <p className="text-gray-600 mt-1">Capture your photo to mark attendance</p>
               <p className="text-sm text-gray-500">Student: {userData.name} | Class: {userData.class} | Roll No: {userData.rollNo}</p>
             </div>
             <div>
@@ -434,12 +424,12 @@ export default function MarkAttendancePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div>
-                  <h3 className="text-sm font-medium text-blue-800 mb-1">Tips for best results:</h3>
+                  <h3 className="text-sm font-medium text-blue-800 mb-1">How it works:</h3>
                   <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Ensure good lighting on your face</li>
-                    <li>• Look directly at the camera</li>
-                    <li>• Remove glasses or masks if possible</li>
-                    <li>• Keep your face centered in the frame</li>
+                    <li>• Capture your photo to mark attendance</li>
+                    <li>• Your location and network details will be recorded</li>
+                    <li>• Status will be "Pending" until teacher verification</li>
+                    <li>• Teacher will use AI camera to verify your presence in class</li>
                   </ul>
                 </div>
               </div>
