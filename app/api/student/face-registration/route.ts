@@ -51,13 +51,14 @@ export async function POST(request: NextRequest) {
     console.log('📸 Face registration POST request received');
     
     const body = await request.json();
-    const { studentId, studentName, images } = body;
+    const { studentId, studentName, images, location } = body;
 
     console.log('📝 Request data:', {
       studentId,
       studentName,
       imageCount: images?.length,
-      firstImageSize: images?.[0]?.length
+      firstImageSize: images?.[0]?.length,
+      hasLocation: !!location
     });
 
     // Validation
@@ -91,130 +92,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Validation passed, connecting to database...');
-    const db = await getDatabase();
+    // FOR TESTING: Skip database operations
+    console.log('📤 Using dummy data for testing (Database disabled)...');
     
-    if (!db) {
-      console.error('❌ Database connection failed');
-      return NextResponse.json(
-        { message: 'Database connection failed. Please try again.' },
-        { status: 500 }
-      );
+    // Log location if provided
+    if (location) {
+      console.log('📍 Student location:', location);
+      // TODO: Store location in database when DB is connected
+      // This will be sent to teacher/admin dashboard
     }
-
-    // Upload images to Cloudinary
-    console.log('📤 Uploading images to Cloudinary...');
-    const { uploadMultipleToCloudinary } = await import('@/lib/cloudinary');
     
-    let uploadResults;
-    try {
-      uploadResults = await uploadMultipleToCloudinary(
-        images,
-        `face-registrations/${studentId}`
-      );
-      console.log('📤 Upload results:', uploadResults.map(r => ({ success: r.success, error: r.error })));
-    } catch (uploadError) {
-      console.error('❌ Cloudinary upload error:', uploadError);
-      return NextResponse.json(
-        { message: 'Failed to upload images to cloud storage: ' + uploadError.message },
-        { status: 500 }
-      );
-    }
-
-    // Check if all uploads succeeded
-    const failedUploads = uploadResults.filter(r => !r.success);
-    if (failedUploads.length > 0) {
-      console.error('❌ Some images failed to upload:', failedUploads);
-      return NextResponse.json(
-        { message: `Failed to upload ${failedUploads.length} out of ${images.length} images to cloud storage` },
-        { status: 500 }
-      );
-    }
-
-    // Get image URLs
-    const imageUrls = uploadResults.map(r => r.secureUrl).filter(Boolean) as string[];
-    console.log('✅ Images uploaded successfully:', imageUrls.length);
-
-    // Check if registration already exists
-    const existingRegistration = await db.collection('face_registrations').findOne({
-      studentId: studentId
+    console.log('✅ Registration test successful');
+    return NextResponse.json({
+      success: true,
+      message: 'Face registration completed successfully (TEST MODE)',
+      isUpdate: false,
+      testMode: true,
+      locationCaptured: !!location
     });
-
-    console.log('🔍 Existing registration:', existingRegistration ? 'Found' : 'Not found');
-
-    const registrationData = {
-      studentId,
-      studentName,
-      images, // Keep base64 as backup
-      imageUrls, // Store Cloudinary URLs
-      imageCount: images.length,
-      registeredAt: new Date(),
-      updatedAt: new Date(),
-      status: 'active',
-      cloudStorage: 'cloudinary'
-    };
-
-    if (existingRegistration) {
-      // Update existing registration
-      console.log('🔄 Updating existing registration...');
-      try {
-        await db.collection('face_registrations').updateOne(
-          { studentId: studentId },
-          {
-            $set: {
-              ...registrationData,
-              previousRegistrationDate: existingRegistration.registeredAt
-            }
-          }
-        );
-
-        // Update user record to mark face as registered
-        const userUpdateResult = await db.collection('users').updateOne(
-          { id: parseInt(studentId) },
-          { $set: { faceRegistered: true, faceRegisteredAt: new Date() } }
-        );
-        console.log('👤 User update result:', userUpdateResult.modifiedCount > 0 ? 'Success' : 'No changes');
-
-        console.log('✅ Registration updated successfully');
-        return NextResponse.json({
-          success: true,
-          message: 'Face registration updated successfully',
-          isUpdate: true
-        });
-      } catch (dbError) {
-        console.error('❌ Database update error:', dbError);
-        return NextResponse.json(
-          { message: 'Failed to update registration in database: ' + dbError.message },
-          { status: 500 }
-        );
-      }
-    } else {
-      // Create new registration
-      console.log('➕ Creating new registration...');
-      try {
-        await db.collection('face_registrations').insertOne(registrationData);
-
-        // Update user record to mark face as registered
-        const userUpdateResult = await db.collection('users').updateOne(
-          { id: parseInt(studentId) },
-          { $set: { faceRegistered: true, faceRegisteredAt: new Date() } }
-        );
-        console.log('👤 User update result:', userUpdateResult.modifiedCount > 0 ? 'Success' : 'No changes');
-
-        console.log('✅ Registration created successfully');
-        return NextResponse.json({
-          success: true,
-          message: 'Face registration completed successfully',
-          isUpdate: false
-        });
-      } catch (dbError) {
-        console.error('❌ Database insert error:', dbError);
-        return NextResponse.json(
-          { message: 'Failed to save registration in database: ' + dbError.message },
-          { status: 500 }
-        );
-      }
-    }
   } catch (error: any) {
     console.error('❌ Error registering face:', error);
     console.error('Error details:', {

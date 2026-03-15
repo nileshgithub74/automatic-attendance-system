@@ -17,11 +17,23 @@ export async function GET(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db('attendance_system');
     
-    const sessions = await db.collection('verification_sessions').find({}).toArray();
+    const allSessions = await db.collection('verification_sessions').find({}).sort({ startTime: -1 }).toArray();
+
+    // Remove duplicates - keep only the newest session per teacher/class combination
+    const sessionMap = new Map();
+    const uniqueSessions = [];
+    
+    for (const session of allSessions) {
+      const key = `${session.teacherId}_${session.classId}`;
+      if (!sessionMap.has(key)) {
+        sessionMap.set(key, true);
+        uniqueSessions.push(session);
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      sessions: sessions || []
+      sessions: uniqueSessions || []
     });
   } catch (error: any) {
     console.error('Error fetching sessions:', error);

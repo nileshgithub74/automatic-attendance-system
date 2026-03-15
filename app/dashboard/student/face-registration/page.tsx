@@ -19,8 +19,28 @@ export default function FaceRegistrationPage() {
   const [hasExistingRegistration, setHasExistingRegistration] = useState(false);
   const [loading, setLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking');
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const REQUIRED_IMAGES = 5;
+
+  // Get location on component mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+          console.log('📍 Location obtained:', position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.warn('⚠️ Location error:', error);
+          // Don't block registration if location fails
+        }
+      );
+    }
+  }, []);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -192,6 +212,7 @@ export default function FaceRegistrationPage() {
         studentName: userData.name,
         studentEmail: userData.email,
         images: capturedImages,
+        location: location || undefined, // Include location if available
       };
       
       const response = await fetch('/api/student/face-registration', {
@@ -270,7 +291,8 @@ export default function FaceRegistrationPage() {
           body: JSON.stringify({
             studentId: userData.id,
             studentName: userData.name,
-            images: [capturedImages[i]] // Send one image at a time
+            images: [capturedImages[i]], // Send one image at a time
+            location: location || undefined, // Include location
           }),
         });
 

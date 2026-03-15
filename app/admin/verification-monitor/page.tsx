@@ -254,7 +254,12 @@ export default function VerificationMonitorPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {sessions.map((session) => (
+                    {sessions.map((session) => {
+                      const progress = session.totalImages > 0 
+                        ? Math.round((session.capturedImages / session.totalImages) * 100) 
+                        : 0;
+                      
+                      return (
                       <tr key={session.sessionId} className="hover:bg-gray-50">
                         <td className="px-6 py-4 text-sm text-gray-900 font-mono">{session.sessionId.slice(0, 20)}...</td>
                         <td className="px-6 py-4 text-sm text-gray-900">{session.teacherName}</td>
@@ -271,11 +276,26 @@ export default function VerificationMonitorPage() {
                             {session.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center text-sm text-gray-900">
-                          {session.capturedImages}/{session.totalImages}
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-sm font-semibold text-gray-900">
+                              {session.capturedImages}/{session.totalImages}
+                            </span>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className={`h-2 rounded-full ${
+                                  progress === 100 ? 'bg-green-600' : 
+                                  progress >= 50 ? 'bg-blue-600' : 
+                                  'bg-orange-600'
+                                }`}
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-gray-600">{progress}%</span>
+                          </div>
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>
@@ -356,80 +376,67 @@ export default function VerificationMonitorPage() {
                 <p className="text-xl text-gray-600">No network logs yet</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {networkLogs.map((log) => (
-                  <div key={log._id} className={`border-2 rounded-lg p-6 ${
-                    log.isVPN || log.isProxy || log.isTor ? 'border-red-300 bg-red-50' :
-                    log.riskScore >= 40 ? 'border-orange-300 bg-orange-50' :
-                    'border-green-300 bg-green-50'
-                  }`}>
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900">{log.userName}</h3>
-                        <p className="text-sm text-gray-600">{new Date(log.timestamp).toLocaleString()}</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className={`px-4 py-2 text-sm font-bold rounded-full ${
-                          log.threatLevel === 'high' ? 'bg-red-600 text-white' :
-                          log.threatLevel === 'medium' ? 'bg-orange-600 text-white' :
-                          'bg-green-600 text-white'
-                        }`}>
-                          {log.threatLevel.toUpperCase()} RISK
-                        </span>
-                        <span className="text-2xl font-bold text-gray-900">
-                          {log.riskScore}/100
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      <div className="bg-white rounded-lg p-3">
-                        <p className="text-xs text-gray-600 mb-1">IP Address</p>
-                        <p className="text-sm font-mono font-semibold text-gray-900">{log.ipAddress}</p>
-                      </div>
-                      <div className="bg-white rounded-lg p-3">
-                        <p className="text-xs text-gray-600 mb-1">Location</p>
-                        <p className="text-sm font-semibold text-gray-900">{log.city}, {log.country}</p>
-                      </div>
-                      <div className="bg-white rounded-lg p-3">
-                        <p className="text-xs text-gray-600 mb-1">ISP</p>
-                        <p className="text-sm font-semibold text-gray-900">{log.isp}</p>
-                      </div>
-                      <div className="bg-white rounded-lg p-3">
-                        <p className="text-xs text-gray-600 mb-1">Latency</p>
-                        <p className="text-sm font-semibold text-gray-900">{log.latency}ms (±{log.jitter}ms)</p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {log.isVPN && (
-                        <span className="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-full">
-                          🚫 VPN DETECTED
-                        </span>
-                      )}
-                      {log.isProxy && (
-                        <span className="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-full">
-                          🚫 PROXY DETECTED
-                        </span>
-                      )}
-                      {log.isTor && (
-                        <span className="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-full">
-                          🚫 TOR DETECTED
-                        </span>
-                      )}
-                      {log.isHosting && (
-                        <span className="px-3 py-1 bg-orange-600 text-white text-xs font-bold rounded-full">
-                          DATACENTER IP
-                        </span>
-                      )}
-                      {!log.isVPN && !log.isProxy && !log.isTor && log.riskScore < 40 && (
-                        <span className="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-full">
-                          VERIFIED
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">User</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">IP Address</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Location</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">ISP</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase">Latency</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase">Risk</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase">Flags</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {networkLogs.map((log) => (
+                      <tr key={log._id} className={`hover:bg-gray-50 ${
+                        log.isVPN || log.isProxy || log.isTor ? 'bg-red-50' :
+                        log.riskScore >= 40 ? 'bg-orange-50' :
+                        ''
+                      }`}>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{log.userName}</td>
+                        <td className="px-4 py-3 text-sm font-mono text-gray-900">{log.ipAddress}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{log.city}, {log.country}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{log.isp}</td>
+                        <td className="px-4 py-3 text-center text-sm text-gray-900">{log.latency}ms</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-1 text-xs font-bold rounded-full ${
+                            log.threatLevel === 'high' ? 'bg-red-600 text-white' :
+                            log.threatLevel === 'medium' ? 'bg-orange-600 text-white' :
+                            'bg-green-600 text-white'
+                          }`}>
+                            {log.riskScore}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex flex-wrap gap-1 justify-center">
+                            {log.isVPN && (
+                              <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded">VPN</span>
+                            )}
+                            {log.isProxy && (
+                              <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded">Proxy</span>
+                            )}
+                            {log.isTor && (
+                              <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded">Tor</span>
+                            )}
+                            {log.isHosting && (
+                              <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-semibold rounded">DC</span>
+                            )}
+                            {!log.isVPN && !log.isProxy && !log.isTor && log.riskScore < 40 && (
+                              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">✓</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {new Date(log.timestamp).toLocaleTimeString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
