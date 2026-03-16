@@ -1,8 +1,9 @@
 import mongoose from "mongoose";
 import dns from 'dns';
 
-// Use Google's DNS servers for resolution
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+// Use Cloudflare DNS servers for better MongoDB Atlas connectivity
+// This fixes DNS resolution issues with some ISPs
+dns.setServers(['1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4']);
 
 const ConnectDb = async () => {
   try {
