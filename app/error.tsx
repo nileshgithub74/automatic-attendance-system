@@ -1,9 +1,20 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function Unauthorized() {
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   const router = useRouter();
+
+  useEffect(() => {
+    console.error('Application error:', error);
+  }, [error]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -21,32 +32,38 @@ export default function Unauthorized() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
             </div>
           </div>
           
-          <h1 className="text-2xl font-semibold text-gray-900 mb-3">Access Denied</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-3">Something Went Wrong</h1>
           <p className="text-gray-600 mb-8">
-            You don't have permission to access this page. Please contact your administrator if you believe this is an error.
+            An unexpected error occurred. Please try again or contact support if the problem persists.
           </p>
           
           <div className="space-y-3">
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => reset()}
               className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="w-full px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
             >
               Go to Dashboard
             </button>
-            <button
-              onClick={() => router.back()}
-              className="w-full px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
-            >
-              Go Back
-            </button>
           </div>
         </div>
+        
+        {error.digest && (
+          <p className="text-center text-xs text-gray-400 mt-4">
+            Error ID: {error.digest}
+          </p>
+        )}
         
         <p className="text-center text-sm text-gray-500 mt-6">
           Need help? Contact your system administrator.

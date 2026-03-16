@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import clientPromise from '@/lib/mongodb';
+import { getDatabase } from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,8 +14,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch real location logs from MongoDB
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json({ logs: [] });
+    }
     
     const logs = await db.collection('location_logs').find({}).sort({ timestamp: -1 }).limit(100).toArray();
 

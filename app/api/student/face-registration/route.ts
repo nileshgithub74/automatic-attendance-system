@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
+import { uploadToCloudinary } from '@/lib/cloudinary';
+import mongoose from 'mongoose';
 
 // Configure route to handle large payloads
 export const runtime = 'nodejs';
@@ -85,30 +87,146 @@ export async function POST(request: NextRequest) {
     // Validate image format
     const invalidImages = images.filter(img => !img.startsWith('data:image/'));
     if (invalidImages.length > 0) {
-      console.error('❌ Invalid image format detected');
+      console.error('Invalid image format detected');
       return NextResponse.json(
         { message: 'Invalid image format. Images must be base64 encoded.' },
         { status: 400 }
       );
     }
 
-    // FOR TESTING: Skip database operations
-    console.log('📤 Using dummy data for testing (Database disabled)...');
+    // Connect to database
+    const db = await getDatabase();
+    
+    if (!db) {
+      console.error('Database connection failed');
+      return NextResponse.json(
+        { message: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
+    
+    console.log('💾 Uploading images to Cloudinary...');
+    
+    // Upload images to Cloudinary
+    const uploadedImages = [];
+    const todayDate = new Date().toISOString().split('T')[0];
+    
+    for (let i = 0; i < images.length; i++) {
+      console.log(`📤 Uploading image ${i + 1}/${images.length}...`);
+      
+      const uploadResult = await uploadToCloudinary(
+        images[i],
+        `face-registrations/${todayDate}`,
+        `${studentId}_${i + 1}_${Date.now()}`
+      );
+      
+      if (uploadResult.success) {
+        uploadedImages.push({
+          url: uploadResult.secureUrl,
+          publicId: uploadResult.publicId,
+          uploadedAt: new Date()
+        });
+        console.log(`✅ Image ${i + 1} uploaded successfully`);
+      } else {
+        console.error(`❌ Failed to upload image ${i + 1}:`, uploadResult.error);
+        // Continue with other images even if one fails
+      }
+    }
+    
+    if (uploadedImages.length === 0) {
+      return NextResponse.json(
+        { message: 'Failed to upload any images to Cloudinary' },
+        { status: 500 }
+      );
+    }
+    
+    console.log(`✅ Successfully uploaded ${uploadedImages.length}/${images.length} images to Cloudinary`);
+    
+    console.log('💾 Saving face registration to database...');
+    
+    // Check if registration already exists
+    const existingReg = await db.collection('face_registrations').findOne({
+      studentId: studentId.toString()
+    });
+    
+    const registrationData = {
+      studentId: studentId.toString(),
+      studentName,
+      images: uploadedImages, // Store Cloudinary URLs instead of base64
+      imageCount: uploadedImages.length,
+      location: location ? {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracy: location.accuracy
+      } : null,
+      status: 'active',
+      registeredAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    if (existingReg) {
+      // Update existing registration
+      await db.collection('face_registrations').updateOne(
+        { studentId: studentId.toString() },
+        { $set: registrationData }
+      );
+      console.log('✅ Updated existing face registration');
+    } else {
+      // Create new registration
+      await db.collection('face_registrations').insertOne(registrationData);
+      console.log('✅ Created new face registration');
+    }
+    
+    // Update student record to mark face as registered
+    console.log('🔄 Updating user record for studentId:', studentId, 'Type:', typeof studentId);
+    
+    try {
+      // Use mongoose ObjectId to avoid BSON version conflicts
+      const objectId = new mongoose.Types.ObjectId(studentId);
+      
+      const updateResult = await db.collection('users').updateOne(
+        { _id: objectId },
+        { 
+          $set: { 
+            faceRegistered: true,
+            faceRegisteredAt: new Date()
+          } 
+        }
+      );
+      
+      console.log('✅ Updated users collection:', {
+        matched: updateResult.matchedCount,
+        modified: updateResult.modifiedCount,
+        success: updateResult.modifiedCount > 0
+      });
+      
+      // Also update in students collection if exists
+      await db.collection('students').updateOne(
+        { _id: objectId },
+        { 
+          $set: { 
+            faceRegistered: true,
+            faceRegisteredAt: new Date()
+          } 
+        }
+      );
+    } catch (updateError: any) {
+      console.error('❌ Error updating user record:', updateError.message);
+      // Continue anyway since face registration was successful
+    }
     
     // Log location if provided
     if (location) {
-      console.log('📍 Student location:', location);
-      // TODO: Store location in database when DB is connected
-      // This will be sent to teacher/admin dashboard
+      console.log('📍 Student location captured:', location);
     }
     
-    console.log('✅ Registration test successful');
+    console.log('✅ Face registration completed successfully');
     return NextResponse.json({
       success: true,
-      message: 'Face registration completed successfully (TEST MODE)',
-      isUpdate: false,
-      testMode: true,
-      locationCaptured: !!location
+      message: 'Face registration completed successfully',
+      isUpdate: !!existingReg,
+      locationCaptured: !!location,
+      imagesUploaded: uploadedImages.length
     });
   } catch (error: any) {
     console.error('❌ Error registering face:', error);

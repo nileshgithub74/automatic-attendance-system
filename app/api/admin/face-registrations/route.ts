@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth, currentUser, clerkClient } from '@clerk/nextjs/server';
-import clientPromise from '@/lib/mongodb';
+import { getDatabase } from '@/lib/mongodb';
 
 export async function GET() {
   try {
@@ -18,8 +18,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
     }
 
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    }
+    
     const studentsCollection = db.collection('students');
 
     // Get all Clerk users with student role

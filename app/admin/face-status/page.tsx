@@ -141,7 +141,7 @@ export default function AdminFaceStatusPage() {
 
   if (!isLoaded || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-red-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-600 mb-4"></div>
           <p className="text-xl font-semibold text-gray-700">Loading Face Registration Status...</p>
@@ -151,21 +151,21 @@ export default function AdminFaceStatusPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-red-50">
+    <div className="min-h-screen bg-gray-50">
       <Toaster position="top-right" />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 rounded-2xl shadow-xl p-8 text-white">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
             <div className="flex justify-between items-start">
               <div>
-                <h1 className="text-4xl font-bold mb-2">Face Registration Status 📸</h1>
-                <p className="text-purple-100 text-lg">Manage student face registrations</p>
+                <h1 className="text-3xl font-semibold text-gray-900 mb-2">Face Registration Status</h1>
+                <p className="text-gray-600">Manage student face registrations</p>
               </div>
               <button
                 onClick={() => router.push('/admin/dashboard')}
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-medium transition-colors"
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
               >
                 ← Back to Dashboard
               </button>
@@ -320,10 +320,7 @@ export default function AdminFaceStatusPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         {student.faceRegistered ? (
                           <div className="flex flex-col items-center">
-                            <span className="px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                              <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
+                            <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                               Yes
                             </span>
                             {student.faceImages > 0 && (
@@ -333,10 +330,7 @@ export default function AdminFaceStatusPage() {
                             )}
                           </div>
                         ) : (
-                          <span className="px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                             No
                           </span>
                         )}

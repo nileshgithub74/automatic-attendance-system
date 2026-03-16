@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getDatabase } from '@/lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 
@@ -33,8 +33,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    }
 
     // Upload image to Cloudinary
     const todayDate = new Date().toISOString().split('T')[0];
@@ -107,8 +110,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    }
 
     // Get pending verifications
     const pendingVerifications = await db.collection('manual_verifications')
@@ -152,8 +158,11 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    }
 
     // Update verification record
     const result = await db.collection('manual_verifications').updateOne(

@@ -89,7 +89,7 @@ export default function PendingApprovalsPage() {
                 disabled={loading}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50"
               >
-                🔄 Refresh
+                Refresh
               </button>
               <Link
                 href="/admin/dashboard"
@@ -194,7 +194,7 @@ export default function PendingApprovalsPage() {
                             disabled={approving === user.id}
                             className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium disabled:opacity-50"
                           >
-                            👨‍🏫 Teacher
+                            Teacher
                           </button>
                           <button
                             onClick={() => approveUser(user.id, 'parent')}

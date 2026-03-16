@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 
-export default function Unauthorized() {
+export default function NotFound() {
   const router = useRouter();
 
   return (
@@ -10,9 +10,10 @@ export default function Unauthorized() {
       <div className="max-w-md w-full">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
           <div className="mb-6">
-            <div className="mx-auto h-16 w-16 rounded-full bg-red-100 flex items-center justify-center">
+            <h1 className="text-6xl font-bold text-gray-900 mb-2">404</h1>
+            <div className="mx-auto h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
               <svg
-                className="h-8 w-8 text-red-600"
+                className="h-8 w-8 text-gray-600"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -21,15 +22,15 @@ export default function Unauthorized() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
             </div>
           </div>
           
-          <h1 className="text-2xl font-semibold text-gray-900 mb-3">Access Denied</h1>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-3">Page Not Found</h2>
           <p className="text-gray-600 mb-8">
-            You don't have permission to access this page. Please contact your administrator if you believe this is an error.
+            The page you're looking for doesn't exist or has been moved.
           </p>
           
           <div className="space-y-3">
@@ -49,7 +50,7 @@ export default function Unauthorized() {
         </div>
         
         <p className="text-center text-sm text-gray-500 mt-6">
-          Need help? Contact your system administrator.
+          If you believe this is an error, please contact support.
         </p>
       </div>
     </div>

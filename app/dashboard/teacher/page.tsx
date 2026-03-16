@@ -51,6 +51,7 @@ export default function TeacherDashboard() {
   const [loadingFaceRecords, setLoadingFaceRecords] = useState(false);
   const [hasMarkedToday, setHasMarkedToday] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date().toDateString());
+  const [selectedReportClass, setSelectedReportClass] = useState<string | null>(null);
 
   // Auto-refresh when day changes
   useEffect(() => {
@@ -342,9 +343,9 @@ export default function TeacherDashboard() {
 
   if (!isLoaded || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-teal-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-600 mb-4"></div>
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
           <p className="text-xl font-semibold text-gray-700">Loading Teacher Dashboard...</p>
         </div>
       </div>
@@ -352,95 +353,95 @@ export default function TeacherDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-teal-50 to-blue-50">
+    <div className="min-h-screen bg-gray-100">
       <Toaster position="top-right" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Enhanced Header */}
         <div className="mb-8">
-          <div className="bg-gradient-to-r from-green-600 via-teal-600 to-blue-600 rounded-2xl shadow-xl p-8 text-white">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
             <div className="flex justify-between items-start">
               <div>
-                <h1 className="text-4xl font-bold mb-2">Hello, {user?.firstName}!</h1>
-                <p className="text-green-100 text-lg mb-4">Ready to mark today's attendance?</p>
+                <h1 className="text-3xl font-semibold text-gray-900 mb-2">Hello, {user?.firstName}!</h1>
+                <p className="text-gray-600 mb-4">Ready to mark today's attendance?</p>
                 <div className="flex gap-4 text-sm">
-                  <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                    <span className="font-semibold">Date:</span> {new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  <div className="bg-gray-100 rounded-lg px-4 py-2">
+                    <span className="font-semibold text-gray-700">Date:</span> <span className="text-gray-600">{new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                   </div>
-                  <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                    <span className="font-semibold">Classes:</span> {uniqueClasses.length}
+                  <div className="bg-gray-100 rounded-lg px-4 py-2">
+                    <span className="font-semibold text-gray-700">Classes:</span> <span className="text-gray-600">{uniqueClasses.length}</span>
                   </div>
                 </div>
               </div>
               <div className="flex flex-col gap-3">
                 <button
                   onClick={() => router.push('/dashboard/teacher/verification')}
-                  className="px-6 py-3 bg-white text-purple-600 hover:bg-purple-50 rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2 whitespace-nowrap"
+                  className="px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium shadow-sm hover:shadow transition-all flex items-center gap-2 whitespace-nowrap"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                   Start AI Verification
                 </button>
-                <p className="text-xs text-green-100 text-center">Check if students are in class</p>
+                <p className="text-xs text-gray-500 text-center">Check if students are in class</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Enhanced Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border-l-4 border-blue-500">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Total Students</p>
-                <p className="text-4xl font-bold text-blue-600">{totalStudents}</p>
+                <p className="text-xs font-medium text-gray-600 mb-1">Total Students</p>
+                <p className="text-2xl font-bold text-blue-600">{totalStudents}</p>
               </div>
-              <div className="bg-blue-100 rounded-full p-4">
-                <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="bg-blue-100 rounded-full p-3">
+                <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border-l-4 border-green-500">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Present</p>
-                <p className="text-4xl font-bold text-green-600">{presentCount}</p>
+                <p className="text-xs font-medium text-gray-600 mb-1">Present</p>
+                <p className="text-2xl font-bold text-green-600">{presentCount}</p>
               </div>
-              <div className="bg-green-100 rounded-full p-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="bg-green-100 rounded-full p-3">
+                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border-l-4 border-red-500">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Absent</p>
-                <p className="text-4xl font-bold text-red-600">{absentCount}</p>
+                <p className="text-xs font-medium text-gray-600 mb-1">Absent</p>
+                <p className="text-2xl font-bold text-red-600">{absentCount}</p>
               </div>
-              <div className="bg-red-100 rounded-full p-4">
-                <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="bg-red-100 rounded-full p-3">
+                <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border-l-4 border-gray-500">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Not Marked</p>
-                <p className="text-4xl font-bold text-gray-600">
+                <p className="text-xs font-medium text-gray-600 mb-1">Not Marked</p>
+                <p className="text-2xl font-bold text-gray-600">
                   {totalStudents - presentCount - absentCount}
                 </p>
               </div>
-              <div className="bg-gray-100 rounded-full p-4">
-                <svg className="w-8 h-8 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="bg-gray-100 rounded-full p-3">
+                <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -449,7 +450,7 @@ export default function TeacherDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-md mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px">
               {!hasMarkedToday && (
@@ -457,7 +458,7 @@ export default function TeacherDashboard() {
                   onClick={() => setActiveTab('mark')}
                   className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === 'mark'
-                      ? 'border-green-500 text-green-600'
+                      ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
@@ -476,7 +477,7 @@ export default function TeacherDashboard() {
                 onClick={() => setActiveTab('reports')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'reports'
-                    ? 'border-green-500 text-green-600'
+                    ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -486,7 +487,7 @@ export default function TeacherDashboard() {
                 onClick={() => setActiveTab('faceRecognition')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'faceRecognition'
-                    ? 'border-green-500 text-green-600'
+                    ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -496,7 +497,7 @@ export default function TeacherDashboard() {
                 onClick={() => setActiveTab('monitor')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'monitor'
-                    ? 'border-green-500 text-green-600'
+                    ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -510,7 +511,7 @@ export default function TeacherDashboard() {
         {activeTab === 'mark' && !hasMarkedToday && (
           <>
             {/* Controls */}
-            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <div>
@@ -552,7 +553,7 @@ export default function TeacherDashboard() {
         {/* Students List - Grouped by Class */}
         <div className="space-y-6 mb-6">
           {students.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="text-center py-12">
                 <svg
                   className="mx-auto h-16 w-16 text-gray-400 mb-4"
@@ -571,6 +572,26 @@ export default function TeacherDashboard() {
                 <p className="text-sm text-gray-500 mt-2">Please add students to the system first</p>
               </div>
             </div>
+          ) : !selectedClass ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="text-center py-12">
+                <svg
+                  className="mx-auto h-16 w-16 text-blue-400 mb-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                  />
+                </svg>
+                <p className="text-xl text-gray-600 font-medium">Please select a class to view students</p>
+                <p className="text-sm text-gray-500 mt-2">Use the dropdown above to choose a class</p>
+              </div>
+            </div>
           ) : (
             filteredClasses.map((className) => {
               const classStudents = studentsByClass[className] || [];
@@ -578,26 +599,26 @@ export default function TeacherDashboard() {
               const classAbsent = classStudents.filter(s => attendance.get(s.id) === 'absent').length;
               
               return (
-                <div key={className} className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div key={className} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                   {/* Class Header */}
-                  <div className="bg-gradient-to-r from-green-600 to-teal-600 px-6 py-4">
+                  <div className="bg-gray-100 px-6 py-4 border-b border-gray-200">
                     <div className="flex justify-between items-center">
                       <div>
-                        <h3 className="text-xl font-bold text-white">{className}</h3>
-                        <p className="text-green-100 text-sm">
+                        <h3 className="text-xl font-semibold text-gray-900">{className}</h3>
+                        <p className="text-gray-600 text-sm">
                           {classStudents.length} students • Present: {classPresent} • Absent: {classAbsent}
                         </p>
                       </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => markClassPresent(className)}
-                          className="px-4 py-2 bg-white text-green-700 rounded-lg font-medium text-sm hover:bg-green-50 transition-colors"
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium text-sm hover:bg-green-700 transition-colors"
                         >
                           All Present
                         </button>
                         <button
                           onClick={() => markClassAbsent(className)}
-                          className="px-4 py-2 bg-white text-red-700 rounded-lg font-medium text-sm hover:bg-red-50 transition-colors"
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700 transition-colors"
                         >
                           All Absent
                         </button>
@@ -698,41 +719,41 @@ export default function TeacherDashboard() {
 
         {/* Smart AI Verification Session Button */}
         {hasMarkedToday && students.length > 0 && (
-          <div className="mt-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl shadow-lg p-6 border-2 border-purple-200">
+          <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="bg-purple-600 rounded-full p-3">
+                  <div className="bg-blue-600 rounded-full p-3">
                     <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">Smart AI Verification</h3>
+                    <h3 className="text-xl font-semibold text-gray-900">Smart AI Verification</h3>
                     <p className="text-sm text-gray-600">Verify attendance using AI face recognition</p>
                   </div>
                 </div>
-                <div className="bg-white rounded-lg p-4 mb-4">
+                <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
                   <h4 className="font-semibold text-gray-900 mb-2">How it works:</h4>
                   <ul className="space-y-2 text-sm text-gray-700">
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-600 font-bold">1.</span>
+                      <span className="text-blue-600 font-bold">1.</span>
                       <span>Start a 5-10 minute verification session</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-600 font-bold">2.</span>
+                      <span className="text-blue-600 font-bold">2.</span>
                       <span>System captures 10 classroom images automatically</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-600 font-bold">3.</span>
+                      <span className="text-blue-600 font-bold">3.</span>
                       <span>AI detects and matches student faces</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-600 font-bold">4.</span>
+                      <span className="text-blue-600 font-bold">4.</span>
                       <span>Students present in 50%+ images marked as verified</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-600 font-bold">5.</span>
+                      <span className="text-blue-600 font-bold">5.</span>
                       <span>Location and network security checks included</span>
                     </li>
                   </ul>
@@ -741,7 +762,7 @@ export default function TeacherDashboard() {
               <div className="ml-6">
                 <button
                   onClick={() => router.push('/dashboard/teacher/verification')}
-                  className="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-3"
+                  className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm hover:shadow transition-all flex items-center gap-3"
                 >
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -760,7 +781,7 @@ export default function TeacherDashboard() {
         {/* View Reports Tab */}
         {activeTab === 'reports' && (
           <>
-            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <h2 className="text-xl font-bold text-gray-900">Attendance Reports</h2>
                 <div className="flex gap-4">
@@ -843,155 +864,198 @@ export default function TeacherDashboard() {
             </div>
 
             {/* Class-wise Reports */}
-            {!loadingHistory && (
-              <div className="space-y-6">
-                {uniqueClasses.map((className) => {
-                  // Get all students in this class
-                  const classStudents = students.filter(s => s.class === className);
-                  
-                  if (classStudents.length === 0) return null;
+            {!loadingHistory && students.length > 0 && (
+              <>
+                {/* Class Selection Dropdown */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Class to View Report
+                  </label>
+                  <select
+                    value={selectedReportClass || ''}
+                    onChange={(e) => setSelectedReportClass(e.target.value || null)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700"
+                  >
+                    <option value="">-- Select a class --</option>
+                    {uniqueClasses.map((className) => {
+                      const classStudents = students.filter(s => s.class === className);
+                      return (
+                        <option key={className} value={className}>
+                          {className} ({classStudents.length} students)
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
 
-                  // Create attendance map for quick lookup
-                  const attendanceMap = new Map();
-                  attendanceHistory.forEach(record => {
-                    attendanceMap.set(record.studentId, record);
-                  });
+                {selectedReportClass ? (
+                  /* Show Selected Class Students */
+                  <div className="space-y-6">
+                    {(() => {
+                      const className = selectedReportClass;
+                      const classStudents = students.filter(s => s.class === className);
+                      
+                      // Create attendance map for quick lookup
+                      const attendanceMap = new Map();
+                      attendanceHistory.forEach(record => {
+                        attendanceMap.set(record.studentId, record);
+                      });
 
-                  // Count present/absent/not marked
-                  let classPresent = 0;
-                  let classAbsent = 0;
-                  let classNotMarked = 0;
-                  
-                  classStudents.forEach(student => {
-                    const record = attendanceMap.get(student.id);
-                    if (record) {
-                      if (record.status === 'present') classPresent++;
-                      else classAbsent++;
-                    } else {
-                      classNotMarked++;
-                    }
-                  });
+                      // Count present/absent/not marked
+                      let classPresent = 0;
+                      let classAbsent = 0;
+                      let classNotMarked = 0;
+                      
+                      classStudents.forEach(student => {
+                        const record = attendanceMap.get(student.id);
+                        if (record) {
+                          if (record.status === 'present') classPresent++;
+                          else classAbsent++;
+                        } else {
+                          classNotMarked++;
+                        }
+                      });
 
-                  return (
-                    <div key={className} className="bg-white rounded-xl shadow-md overflow-hidden">
-                      {/* Class Header */}
-                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h3 className="text-xl font-bold text-white">{className}</h3>
-                            <p className="text-blue-100 text-sm">
-                              {classStudents.length} students • Present: {classPresent} • Absent: {classAbsent} • Not Marked: {classNotMarked}
-                            </p>
+                      return (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                          {/* Class Header */}
+                          <div className="bg-gray-100 px-6 py-4 border-b border-gray-200">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <h3 className="text-xl font-semibold text-gray-900">{className}</h3>
+                                <p className="text-gray-600 text-sm">
+                                  {classStudents.length} students • Present: {classPresent} • Absent: {classAbsent} • Not Marked: {classNotMarked}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-gray-600 text-sm">Attendance Rate</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                  {classStudents.length > 0 ? Math.round((classPresent / classStudents.length) * 100) : 0}%
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-blue-100 text-sm">Attendance Rate</p>
-                            <p className="text-2xl font-bold text-white">
-                              {classStudents.length > 0 ? Math.round((classPresent / classStudents.length) * 100) : 0}%
-                            </p>
+
+                          {/* Students Table */}
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                    Roll No
+                                  </th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                    Student Name
+                                  </th>
+                                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                    Status
+                                  </th>
+                                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                    Marked By
+                                  </th>
+                                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                    Time
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {classStudents
+                                  .sort((a, b) => {
+                                    const rollA = parseInt(a.rollNo || '0');
+                                    const rollB = parseInt(b.rollNo || '0');
+                                    return rollA - rollB;
+                                  })
+                                  .map((student) => {
+                                  const record = attendanceMap.get(student.id);
+                                  const isFaceRecognition = record && (
+                                    record.method === 'face_recognition' || 
+                                    record.method === 'Face Recognition' ||
+                                    record.markedBy?.toLowerCase().includes('face')
+                                  );
+                                  
+                                  return (
+                                    <tr key={student.id} className={`hover:bg-gray-50 ${!record ? 'bg-yellow-50' : ''}`}>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {student.rollNo || student.id}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium text-gray-900">
+                                          {student.name}
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                                        {record ? (
+                                          <span
+                                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                              record.status === 'present'
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
+                                            }`}
+                                          >
+                                            {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                                          </span>
+                                        ) : (
+                                          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">
+                                            Not Marked
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                                        {record ? (
+                                          isFaceRecognition ? (
+                                            <span className="px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                              <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                              </svg>
+                                              Face Recognition
+                                            </span>
+                                          ) : (
+                                            <span className="text-sm text-gray-700">{record.teacherName || record.markedBy || 'Teacher'}</span>
+                                          )
+                                        ) : (
+                                          <span className="text-sm text-gray-400">-</span>
+                                        )}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                        {record ? (
+                                          new Date(record.markedAt).toLocaleTimeString('en-US', {
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                          })
+                                        ) : (
+                                          <span className="text-gray-400">-</span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
                           </div>
                         </div>
-                      </div>
-
-                      {/* Students Table */}
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                Roll No
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                Student Name
-                              </th>
-                              <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                Status
-                              </th>
-                              <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                Marked By
-                              </th>
-                              <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                Time
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {classStudents
-                              .sort((a, b) => {
-                                const rollA = parseInt(a.rollNo || '0');
-                                const rollB = parseInt(b.rollNo || '0');
-                                return rollA - rollB;
-                              })
-                              .map((student) => {
-                              const record = attendanceMap.get(student.id);
-                              const isFaceRecognition = record && (
-                                record.method === 'face_recognition' || 
-                                record.method === 'Face Recognition' ||
-                                record.markedBy?.toLowerCase().includes('face')
-                              );
-                              
-                              return (
-                                <tr key={student.id} className={`hover:bg-gray-50 ${!record ? 'bg-yellow-50' : ''}`}>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {student.rollNo || student.id}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-gray-900">
-                                      {student.name}
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                                    {record ? (
-                                      <span
-                                        className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                          record.status === 'present'
-                                            ? 'bg-green-100 text-green-800'
-                                            : 'bg-red-100 text-red-800'
-                                        }`}
-                                      >
-                                        {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                                      </span>
-                                    ) : (
-                                      <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">
-                                        Not Marked
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                                    {record ? (
-                                      isFaceRecognition ? (
-                                        <span className="px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                          <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                          </svg>
-                                          Face Recognition
-                                        </span>
-                                      ) : (
-                                        <span className="text-sm text-gray-700">{record.teacherName || record.markedBy || 'Teacher'}</span>
-                                      )
-                                    ) : (
-                                      <span className="text-sm text-gray-400">-</span>
-                                    )}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                    {record ? (
-                                      new Date(record.markedAt).toLocaleTimeString('en-US', {
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                      })
-                                    ) : (
-                                      <span className="text-gray-400">-</span>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                    <svg
+                      className="mx-auto h-16 w-16 text-gray-400 mb-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                      />
+                    </svg>
+                    <p className="text-lg text-gray-600 font-medium">Please select a class to view attendance report</p>
+                    <p className="text-sm text-gray-500 mt-2">Use the dropdown above to choose a class</p>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -999,7 +1063,7 @@ export default function TeacherDashboard() {
         {/* Face Recognition Attendance Tab */}
         {activeTab === 'faceRecognition' && (
           <>
-            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900 flex items-center">
@@ -1145,40 +1209,40 @@ export default function TeacherDashboard() {
 
         {/* AI Monitor Tab */}
         {activeTab === 'monitor' && (
-          <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">AI Verification Monitor</h2>
               <p className="text-gray-600">Monitor your verification sessions, student locations, and network security</p>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 border-2 border-purple-200">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">Full Monitoring Dashboard</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Full Monitoring Dashboard</h3>
                   <p className="text-sm text-gray-700 mb-4">
                     View detailed information about:
                   </p>
                   <ul className="space-y-2 text-sm text-gray-700">
                     <li className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       All verification sessions with status and progress
                     </li>
                     <li className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       </svg>
                       Student GPS locations and distance from classroom
                     </li>
                     <li className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
                       VPN/Proxy detection and network security analysis
                     </li>
                     <li className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
                       Real-time statistics and analytics
@@ -1188,7 +1252,7 @@ export default function TeacherDashboard() {
                 <div>
                   <button
                     onClick={() => router.push('/admin/verification-monitor')}
-                    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-3"
+                    className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm hover:shadow transition-all flex items-center gap-3"
                   >
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -1202,7 +1266,7 @@ export default function TeacherDashboard() {
 
             {/* Quick Stats Preview */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-semibold text-gray-700">Sessions Today</h4>
                   <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1213,7 +1277,7 @@ export default function TeacherDashboard() {
                 <p className="text-xs text-gray-600 mt-1">Click monitor to view all</p>
               </div>
 
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 border border-green-200">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-semibold text-gray-700">Location Logs</h4>
                   <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1224,7 +1288,7 @@ export default function TeacherDashboard() {
                 <p className="text-xs text-gray-600 mt-1">GPS tracking records</p>
               </div>
 
-              <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-6 border border-red-200">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-semibold text-gray-700">VPN Detected</h4>
                   <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

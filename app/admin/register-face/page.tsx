@@ -118,7 +118,7 @@ export default function AdminRegisterFacePage() {
 
       if (data.success) {
         toast.dismiss(loadingToast);
-        toast.success(`✓ Face ${data.isUpdate ? 'updated' : 'registered'} for ${selectedStudent.name}!`);
+        toast.success(`Face ${data.isUpdate ? 'updated' : 'registered'} successfully for ${selectedStudent.name}!`);
         setCapturedImages([]);
         setSelectedStudent(null);
         fetchStudents();
@@ -137,7 +137,7 @@ export default function AdminRegisterFacePage() {
 
   if (!isLoaded || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
           <p className="text-xl font-semibold text-gray-700">Loading...</p>
@@ -147,21 +147,21 @@ export default function AdminRegisterFacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="min-h-screen bg-gray-50">
       <Toaster position="top-right" />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl shadow-xl p-8 text-white">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
             <div className="flex justify-between items-start">
               <div>
-                <h1 className="text-4xl font-bold mb-2">Register Student Face 📸</h1>
-                <p className="text-blue-100 text-lg">Capture and register student faces for attendance</p>
+                <h1 className="text-3xl font-semibold text-gray-900 mb-2">Register Student Face</h1>
+                <p className="text-gray-600">Capture and register student faces for attendance</p>
               </div>
               <button
                 onClick={() => router.push('/admin/dashboard')}
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-medium transition-colors"
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
               >
                 ← Back to Dashboard
               </button>
@@ -185,13 +185,13 @@ export default function AdminRegisterFacePage() {
                   setSelectedStudent(student || null);
                   setCapturedImages([]);
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
               >
-                <option value="">-- Select a student --</option>
+                <option value="" className="text-gray-500">-- Select a student --</option>
                 {students.map((student) => (
                   <option key={student.id} value={student.id}>
                     {student.name} - {student.rollNo} ({student.class})
-                    {student.faceRegistered ? ' ✓ Registered' : ''}
+                    {student.faceRegistered ? ' (Registered)' : ''}
                   </option>
                 ))}
               </select>
@@ -204,7 +204,7 @@ export default function AdminRegisterFacePage() {
                 <p className="text-sm text-blue-800"><strong>Roll:</strong> {selectedStudent.rollNo}</p>
                 <p className="text-sm text-blue-800"><strong>Class:</strong> {selectedStudent.class}</p>
                 <p className="text-sm text-blue-800">
-                  <strong>Status:</strong> {selectedStudent.faceRegistered ? '✓ Already Registered' : '✗ Not Registered'}
+                  <strong>Status:</strong> {selectedStudent.faceRegistered ? 'Already Registered' : 'Not Registered'}
                 </p>
               </div>
             )}
@@ -359,17 +359,11 @@ export default function AdminRegisterFacePage() {
                       <td className="px-6 py-4 text-sm text-gray-700">{student.class}</td>
                       <td className="px-6 py-4 text-center">
                         {student.faceRegistered ? (
-                          <span className="px-3 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
+                          <span className="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-green-100 text-green-800">
                             Registered
                           </span>
                         ) : (
-                          <span className="px-3 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                          <span className="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-red-100 text-red-800">
                             Not Registered
                           </span>
                         )}

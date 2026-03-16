@@ -399,10 +399,10 @@ export default function StudentDashboard() {
                       Date
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Status
+                      Day
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Marked By
+                      Status
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Time
@@ -410,7 +410,10 @@ export default function StudentDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
-                  {attendanceRecords.slice(0, 5).map((record, index) => (
+                  {attendanceRecords
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .slice(0, 5)
+                    .map((record, index) => (
                     <tr key={record.id} className="hover:bg-blue-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -427,34 +430,22 @@ export default function StudentDashboard() {
                                 year: 'numeric',
                               })}
                             </p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(record.date).toLocaleDateString('en-US', {
-                                weekday: 'long',
-                              })}
-                            </p>
                           </div>
                         </div>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {new Date(record.date).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                        })}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-4 py-2 inline-flex items-center text-xs font-bold rounded-full ${
+                        <span className={`px-4 py-2 inline-flex text-xs font-bold rounded-full ${
                           record.status === 'present'
                             ? 'bg-green-100 text-green-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {record.status === 'present' ? (
-                            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : (
-                            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          )}
                           {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
-                        {record.teacherName}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(record.markedAt).toLocaleTimeString('en-US', {

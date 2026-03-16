@@ -9,6 +9,13 @@ cloudinary.config({
   secure: true
 });
 
+// Log configuration (without exposing secrets)
+console.log('🔧 Cloudinary Config:', {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY ? `${process.env.CLOUDINARY_API_KEY.substring(0, 6)}...` : 'missing',
+  api_secret: process.env.CLOUDINARY_API_SECRET ? 'configured' : 'missing'
+});
+
 /**
  * Upload base64 image to Cloudinary
  * @param base64Image - Base64 encoded image string
@@ -28,6 +35,15 @@ export async function uploadToCloudinary(
   error?: string;
 }> {
   try {
+    // Verify configuration
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error('❌ Cloudinary credentials missing');
+      return {
+        success: false,
+        error: 'Cloudinary credentials not configured'
+      };
+    }
+
     // Ensure base64 has proper format
     const imageData = base64Image.includes('base64,') 
       ? base64Image 
@@ -36,15 +52,26 @@ export async function uploadToCloudinary(
     const uploadOptions: any = {
       folder,
       resource_type: 'image',
-      quality: 'auto:good', // Automatic quality optimization
-      fetch_format: 'auto', // Automatic format selection (WebP, etc.)
+      type: 'upload', // Explicitly set upload type
+      // Remove quality and fetch_format as they might cause issues
     };
 
     if (publicId) {
       uploadOptions.public_id = publicId;
     }
 
+    console.log('📤 Uploading to Cloudinary with options:', {
+      folder,
+      publicId: publicId || 'auto-generated',
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME
+    });
+
     const result = await cloudinary.uploader.upload(imageData, uploadOptions);
+
+    console.log('✅ Cloudinary upload successful:', {
+      url: result.secure_url,
+      publicId: result.public_id
+    });
 
     return {
       success: true,
@@ -53,7 +80,12 @@ export async function uploadToCloudinary(
       publicId: result.public_id
     };
   } catch (error: any) {
-    console.error('Cloudinary upload error:', error);
+    console.error('Cloudinary upload error:', {
+      message: error.message,
+      http_code: error.http_code,
+      name: error.name
+    });
+    console.error('Full error:', error);
     return {
       success: false,
       error: error.message || 'Upload failed'

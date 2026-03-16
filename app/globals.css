@@ -88,8 +88,10 @@ select {
 }
 
 input::placeholder,
-textarea::placeholder {
-  color: #9ca3af !important; /* Light gray placeholder */
+textarea::placeholder,
+select option[value=""] {
+  color: #6b7280 !important; /* Medium gray placeholder - more visible */
+  opacity: 1 !important;
 }
 
 /* Ensure input text is visible when typing */

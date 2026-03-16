@@ -1,26 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getDatabase } from '@/lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  console.log('🔵 GET /api/students/get - Starting...');
+  console.log('GET /api/students/get - Starting...');
   
   try {
-    console.log('📚 Fetching students list...');
+    console.log('Fetching students list...');
 
     // Check authentication
     const { userId: clerkUserId } = await auth();
     const customUserId = request.cookies.get('userId')?.value;
     const userRole = request.cookies.get('userRole')?.value;
 
-    console.log('🔐 Auth:', { clerkUserId, customUserId, userRole });
+    console.log('Auth:', { clerkUserId, customUserId, userRole });
 
-    console.log('📦 Connecting to MongoDB...');
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
-    console.log('✅ MongoDB connected');
+    console.log('Connecting to MongoDB...');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json({
+        success: false,
+        message: 'Database connection failed',
+        students: []
+      }, { status: 500 });
+    }
+    
+    console.log('MongoDB connected');
 
     // Fetch all students from 'users' collection
     // Use case-insensitive regex to match any case variation
@@ -47,7 +55,7 @@ export async function GET(request: NextRequest) {
       .sort({ name: 1 })
       .toArray();
 
-    console.log(`✅ Found ${usersStudents.length} students in users collection`);
+    console.log(`Found ${usersStudents.length} students in users collection`);
 
     // Also check legacy 'students' collection
     const legacyStudents = await db
@@ -71,7 +79,7 @@ export async function GET(request: NextRequest) {
       .sort({ name: 1 })
       .toArray();
 
-    console.log(`✅ Found ${legacyStudents.length} students in students collection`);
+    console.log(`Found ${legacyStudents.length} students in students collection`);
 
     // Combine and deduplicate by email
     const mongoEmailSet = new Set();
@@ -83,12 +91,12 @@ export async function GET(request: NextRequest) {
       return true;
     });
 
-    console.log(`✅ Total unique students from MongoDB: ${students.length}`);
+    console.log(`Total unique students from MongoDB: ${students.length}`);
 
     // Also fetch students from Clerk
     let clerkStudents: any[] = [];
     try {
-      console.log('👥 Fetching students from Clerk...');
+      console.log('Fetching students from Clerk...');
       const { clerkClient } = await import('@clerk/nextjs/server');
       const client = await clerkClient();
       const clerkUsers = await client.users.getUserList();
@@ -115,9 +123,9 @@ export async function GET(request: NextRequest) {
           };
         });
       
-      console.log(`✅ Found ${clerkStudents.length} students in Clerk`);
+      console.log(`Found ${clerkStudents.length} students in Clerk`);
     } catch (clerkError) {
-      console.error('❌ Error fetching from Clerk:', clerkError);
+      console.error('Error fetching from Clerk:', clerkError);
     }
 
     // Combine MongoDB and Clerk students, deduplicate by email
@@ -131,7 +139,7 @@ export async function GET(request: NextRequest) {
       return true;
     });
 
-    console.log(`✅ Total unique students (MongoDB + Clerk): ${uniqueStudents.length}`);
+    console.log(`Total unique students (MongoDB + Clerk): ${uniqueStudents.length}`);
 
     // Format the response
     const formattedStudents = uniqueStudents.map((student) => ({
@@ -146,7 +154,7 @@ export async function GET(request: NextRequest) {
       source: student.source || 'mongodb'
     }));
 
-    console.log(`🎯 Returning ${formattedStudents.length} students`);
+    console.log(`Returning ${formattedStudents.length} students`);
     
     return NextResponse.json({
       success: true,
@@ -154,8 +162,8 @@ export async function GET(request: NextRequest) {
       count: formattedStudents.length
     });
   } catch (error: any) {
-    console.error('❌ Error fetching students:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error('Error fetching students:', error);
+    console.error('Error stack:', error.stack);
     return NextResponse.json(
       {
         success: false,

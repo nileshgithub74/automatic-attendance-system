@@ -14,6 +14,8 @@ export default function MarkAttendancePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [showAlreadyMarkedModal, setShowAlreadyMarkedModal] = useState(false);
+  const [locationGranted, setLocationGranted] = useState(false);
+  const [locationData, setLocationData] = useState<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -55,10 +57,43 @@ export default function MarkAttendancePage() {
     // No authentication found - don't redirect, let page show message
   }, [router, user, isLoaded]);
 
+  const requestLocation = async () => {
+    try {
+      setMessage({ type: 'info', text: 'Requesting location access...' });
+      
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
+      });
+      
+      const location = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        platform: navigator.platform
+      };
+      
+      setLocationData(location);
+      setLocationGranted(true);
+      setMessage({ type: 'success', text: 'Location access granted! Now you can start the camera.' });
+    } catch (error) {
+      console.error('Location error:', error);
+      setMessage({ type: 'error', text: 'Location access is required to mark attendance. Please allow location permissions.' });
+    }
+  };
+
   const startCamera = async () => {
+    if (!locationGranted) {
+      setMessage({ type: 'error', text: 'Please grant location access first.' });
+      return;
+    }
+
     try {
       setMessage({ type: 'info', text: 'Starting camera...' });
-      setIsCapturing(true); // Show the video container immediately
+      setIsCapturing(true);
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
@@ -71,7 +106,6 @@ export default function MarkAttendancePage() {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         
-        // Ensure video plays
         videoRef.current.onloadedmetadata = () => {
           videoRef.current?.play().then(() => {
             setMessage({ type: 'success', text: 'Camera started! Position your face in the frame.' });
@@ -84,7 +118,7 @@ export default function MarkAttendancePage() {
     } catch (error) {
       console.error('Error accessing camera:', error);
       setMessage({ type: 'error', text: 'Failed to access camera. Please allow camera permissions.' });
-      setIsCapturing(false); // Hide video container on error
+      setIsCapturing(false);
     }
   };
 
@@ -131,27 +165,8 @@ export default function MarkAttendancePage() {
     setMessage({ type: 'info', text: 'Processing your attendance...' });
 
     try {
-      // Get location data
-      let location = null;
-      try {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
-          });
-        });
-        
-        location = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          platform: navigator.platform
-        };
-      } catch (error) {
-        console.error('Location error:', error);
-        setMessage({ type: 'info', text: 'Location unavailable, continuing...' });
-      }
+      // Use the location data we already have
+      const location = locationData;
 
       // Get network information
       const networkInfo: any = {};
@@ -287,9 +302,9 @@ export default function MarkAttendancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Mark Attendance</h1>
@@ -323,24 +338,43 @@ export default function MarkAttendancePage() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="space-y-6">
             <div className="bg-gray-50 rounded-lg p-6 border-2 border-dashed border-gray-300">
               <div className="flex flex-col items-center justify-center">
                 {!isCapturing && !capturedImage && (
                   <div className="text-center">
-                    <svg className="w-24 h-24 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to mark attendance?</h3>
-                    <p className="text-sm text-gray-500 mb-4">Click the button below to start your camera</p>
-                    <button
-                      onClick={startCamera}
-                      className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
-                    >
-                      Start Camera
-                    </button>
+                    {!locationGranted ? (
+                      <>
+                        <svg className="w-24 h-24 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Step 1: Grant Location Access</h3>
+                        <p className="text-sm text-gray-500 mb-4">We need your location to verify attendance</p>
+                        <button
+                          onClick={requestLocation}
+                          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                        >
+                          Allow Location Access
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-24 h-24 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Step 2: Start Camera</h3>
+                        <p className="text-sm text-gray-500 mb-4">Click the button below to start your camera</p>
+                        <button
+                          onClick={startCamera}
+                          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                        >
+                          Start Camera
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -415,23 +449,6 @@ export default function MarkAttendancePage() {
                 )}
 
                 <canvas ref={canvasRef} className="hidden" />
-              </div>
-            </div>
-
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-              <div className="flex">
-                <svg className="w-5 h-5 text-blue-500 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <h3 className="text-sm font-medium text-blue-800 mb-1">How it works:</h3>
-                  <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Capture your photo to mark attendance as PRESENT</li>
-                    <li>• Your location and network details will be recorded</li>
-                    <li>• Teacher will use AI camera to verify your actual presence</li>
-                    <li>• Final status will be confirmed based on classroom verification</li>
-                  </ul>
-                </div>
               </div>
             </div>
           </div>

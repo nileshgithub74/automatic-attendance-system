@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import clientPromise from '@/lib/mongodb';
+import { getDatabase } from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,8 +14,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch real data from MongoDB
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json({ sessions: [] });
+    }
     
     const allSessions = await db.collection('verification_sessions').find({}).sort({ startTime: -1 }).toArray();
 
