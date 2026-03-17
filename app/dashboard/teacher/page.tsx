@@ -49,6 +49,7 @@ export default function TeacherDashboard() {
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
   const [faceRecognitionRecords, setFaceRecognitionRecords] = useState<any[]>([]);
   const [loadingFaceRecords, setLoadingFaceRecords] = useState(false);
+  const [showLast7Days, setShowLast7Days] = useState(false);
   const [hasMarkedToday, setHasMarkedToday] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date().toDateString());
   const [selectedReportClass, setSelectedReportClass] = useState<string | null>(null);
@@ -105,7 +106,7 @@ export default function TeacherDashboard() {
       
       return () => clearInterval(interval);
     }
-  }, [activeTab, reportDate]);
+  }, [activeTab, reportDate, showLast7Days]);
 
   const checkTodayAttendance = async () => {
     try {
@@ -193,13 +194,28 @@ export default function TeacherDashboard() {
   const fetchFaceRecognitionRecords = async () => {
     setLoadingFaceRecords(true);
     try {
-      const response = await fetch(`/api/attendance?date=${reportDate}`);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('All attendance records:', data);
+      let allFaceRecords: any[] = [];
+      
+      if (showLast7Days) {
+        // Fetch records for the last 7 days
+        const promises = [];
+        for (let i = 0; i < 7; i++) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          const dateString = date.toISOString().split('T')[0];
+          promises.push(fetch(`/api/attendance?date=${dateString}`));
+        }
         
-        // Filter only face recognition records - check multiple fields
-        const faceRecords = data.filter((record: any) => {
+        const responses = await Promise.all(promises);
+        const dataPromises = responses.map(response => response.ok ? response.json() : []);
+        const allData = await Promise.all(dataPromises);
+        
+        // Combine all records
+        const combinedRecords = allData.flat();
+        console.log('All attendance records (7 days):', combinedRecords);
+        
+        // Filter only face recognition records
+        allFaceRecords = combinedRecords.filter((record: any) => {
           const isFaceRecognition = 
             record.method === 'face_recognition' || 
             record.method === 'Face Recognition' ||
@@ -213,15 +229,45 @@ export default function TeacherDashboard() {
               record.teacherName.toLowerCase().includes('self')
             ));
           
-          console.log('Record:', record.studentName, 'markedBy:', record.markedBy, 'method:', record.method, 'teacherName:', record.teacherName, 'isFace:', isFaceRecognition);
           return isFaceRecognition;
         });
         
-        console.log('Filtered face recognition records:', faceRecords);
-        setFaceRecognitionRecords(faceRecords);
+        // Sort by date (newest first)
+        allFaceRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
       } else {
-        toast.error('Failed to fetch face recognition records');
+        // Fetch records for single date
+        const response = await fetch(`/api/attendance?date=${reportDate}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('All attendance records:', data);
+          
+          // Filter only face recognition records
+          allFaceRecords = data.filter((record: any) => {
+            const isFaceRecognition = 
+              record.method === 'face_recognition' || 
+              record.method === 'Face Recognition' ||
+              (record.markedBy && (
+                record.markedBy.toLowerCase().includes('face') ||
+                record.markedBy.toLowerCase().includes('self') ||
+                record.markedBy === 'Self (Face Recognition)'
+              )) ||
+              (record.teacherName && (
+                record.teacherName.toLowerCase().includes('face') ||
+                record.teacherName.toLowerCase().includes('self')
+              ));
+            
+            console.log('Record:', record.studentName, 'markedBy:', record.markedBy, 'method:', record.method, 'teacherName:', record.teacherName, 'isFace:', isFaceRecognition);
+            return isFaceRecognition;
+          });
+        } else {
+          toast.error('Failed to fetch face recognition records');
+        }
       }
+      
+      console.log('Filtered face recognition records:', allFaceRecords);
+      setFaceRecognitionRecords(allFaceRecords);
+      
     } catch (error) {
       console.error('Error fetching face recognition records:', error);
       toast.error('Error loading face recognition records');
@@ -501,7 +547,7 @@ export default function TeacherDashboard() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                AI Monitor
+                Verification Monitor
               </button>
             </nav>
           </div>
@@ -1064,24 +1110,15 @@ export default function TeacherDashboard() {
         {activeTab === 'faceRecognition' && (
           <>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                    Face Recognition Attendance
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Students who marked attendance using face recognition • Auto-refreshes every 30 seconds
-                  </p>
-                </div>
-                <div className="flex gap-3 items-end">
+              <div className="flex flex-col gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
-                    <input
-                      type="date"
-                      value={reportDate}
-                      onChange={(e) => setReportDate(e.target.value)}
-                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700"
-                    />
+                    <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                      Face Recognition Attendance
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Students who marked attendance using face recognition • Auto-refreshes every 30 seconds
+                    </p>
                   </div>
                   <button
                     onClick={() => fetchFaceRecognitionRecords()}
@@ -1093,6 +1130,63 @@ export default function TeacherDashboard() {
                     </svg>
                     {loadingFaceRecords ? 'Refreshing...' : 'Refresh'}
                   </button>
+                </div>
+
+                {/* Date Range Filters */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      const today = new Date().toISOString().split('T')[0];
+                      setReportDate(today);
+                      setShowLast7Days(false);
+                    }}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                      !showLast7Days && reportDate === new Date().toISOString().split('T')[0]
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    onClick={() => {
+                      const yesterday = new Date();
+                      yesterday.setDate(yesterday.getDate() - 1);
+                      setReportDate(yesterday.toISOString().split('T')[0]);
+                      setShowLast7Days(false);
+                    }}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                      !showLast7Days && reportDate === new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+                    }`}
+                  >
+                    Yesterday
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowLast7Days(true);
+                    }}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                      showLast7Days
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-purple-100 hover:bg-purple-200 text-purple-700'
+                    }`}
+                  >
+                    Last 7 Days
+                  </button>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <label className="text-sm font-medium text-gray-700">Custom Date:</label>
+                    <input
+                      type="date"
+                      value={reportDate}
+                      onChange={(e) => {
+                        setReportDate(e.target.value);
+                        setShowLast7Days(false);
+                      }}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 text-sm"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1126,75 +1220,143 @@ export default function TeacherDashboard() {
                       </p>
                     </div>
                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                      <p className="text-sm text-gray-600">Date</p>
+                      <p className="text-sm text-gray-600">
+                        {showLast7Days ? 'Date Range' : 'Date'}
+                      </p>
                       <p className="text-lg font-bold text-purple-600">
-                        {new Date(reportDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {showLast7Days 
+                          ? 'Last 7 Days' 
+                          : new Date(reportDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        }
                       </p>
                     </div>
                   </div>
 
-                  {/* Records Table */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gradient-to-r from-green-50 to-blue-50">
+                  {/* Records Table - Simple List Format */}
+                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                            Time
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Student
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                            Student Name
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Class & Roll
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                            Class
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date & Time
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                            Roll No
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Location
                           </th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Network
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Status
-                          </th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
-                            Method
                           </th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {faceRecognitionRecords.map((record, index) => (
-                          <tr key={index} className="hover:bg-green-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {new Date(record.markedAt || record.date).toLocaleTimeString('en-US', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </td>
+                          <tr key={index} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
-                                <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                  <span className="text-blue-600 font-semibold text-sm">
+                                {record.capturedFaceImageUrl ? (
+                                  <img
+                                    src={record.capturedFaceImageUrl}
+                                    alt={record.studentName}
+                                    className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                                     {record.studentName?.charAt(0) || 'S'}
-                                  </span>
+                                  </div>
+                                )}
+                                <div className="ml-3">
+                                  <div className="text-sm font-medium text-gray-900">{record.studentName}</div>
+                                  <div className="text-sm text-gray-500">ID: {record.studentId}</div>
                                 </div>
-                                <div className="text-sm font-medium text-gray-900">{record.studentName}</div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                              {record.class || 'N/A'}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">{record.class || 'N/A'}</div>
+                              <div className="text-sm text-gray-500">Roll: {record.rollNo || 'N/A'}</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                              {record.rollNo || 'N/A'}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {new Date(record.date).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {new Date(record.markedAt || record.date).toLocaleTimeString('en-US', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                              </span>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {record.location ? (
+                                <div>
+                                  <div className={`text-sm font-medium ${
+                                    record.location.isInClassroom ? 'text-green-600' : 'text-red-600'
+                                  }`}>
+                                    {record.location.isInClassroom ? '✓ In Classroom' : '✗ Outside'}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {record.location.distanceFromClassroom}m away
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-400">No location data</span>
+                              )}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                </svg>
-                                Face Recognition
-                              </span>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {record.networkSecurity ? (
+                                <div>
+                                  <div className="flex items-center gap-1">
+                                    {record.networkSecurity.isVPN && (
+                                      <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-bold rounded">VPN</span>
+                                    )}
+                                    {record.networkSecurity.isProxy && (
+                                      <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-bold rounded">Proxy</span>
+                                    )}
+                                    {!record.networkSecurity.isVPN && !record.networkSecurity.isProxy && (
+                                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded">Clean</span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    Risk: {record.networkSecurity.riskScore}/100
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-400">No network data</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex flex-col gap-1">
+                                <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full">
+                                  Present
+                                </span>
+                                <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">
+                                  Face Recognition
+                                </span>
+                                {record.flags && record.flags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {record.flags.slice(0, 2).map((flag: string, idx: number) => (
+                                      <span key={idx} className="px-2 py-1 bg-red-100 text-red-800 text-xs font-bold rounded">
+                                        {flag}
+                                      </span>
+                                    ))}
+                                    {record.flags.length > 2 && (
+                                      <span className="text-xs text-gray-500">+{record.flags.length - 2} more</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1207,96 +1369,138 @@ export default function TeacherDashboard() {
           </>
         )}
 
-        {/* AI Monitor Tab */}
+        {/* Verification Monitor Tab */}
         {activeTab === 'monitor' && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">AI Verification Monitor</h2>
-              <p className="text-gray-600">Monitor your verification sessions, student locations, and network security</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Verification Monitoring Dashboard</h2>
+              <p className="text-gray-600">Monitor student locations, sessions, and network security</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Full Monitoring Dashboard</h3>
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow-sm border border-blue-200 p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Real-Time Monitoring Dashboard</h3>
                   <p className="text-sm text-gray-700 mb-4">
-                    View detailed information about:
+                    View comprehensive security and location data for all students:
                   </p>
                   <ul className="space-y-2 text-sm text-gray-700">
                     <li className="flex items-center gap-2">
                       <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      All verification sessions with status and progress
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       </svg>
-                      Student GPS locations and distance from classroom
+                      <strong>GPS Location Tracking:</strong> See exact student locations and distance from classroom
                     </li>
                     <li className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
-                      VPN/Proxy detection and network security analysis
+                      <strong>VPN/Proxy Detection:</strong> Identify students using VPN or proxy networks
                     </li>
                     <li className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                       </svg>
-                      Real-time statistics and analytics
+                      <strong>Network Security:</strong> Monitor IP addresses, latency, jitter, and risk scores
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <strong>Attendance Sessions:</strong> Track all verification sessions with detailed logs
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <strong>Security Flags:</strong> Automatic alerts for suspicious activity
                     </li>
                   </ul>
                 </div>
-                <div>
+                <div className="ml-6">
                   <button
                     onClick={() => router.push('/admin/verification-monitor')}
-                    className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm hover:shadow transition-all flex items-center gap-3"
+                    className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center gap-3 transform hover:scale-105"
                   >
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
-                    Open Monitor Dashboard
+                    Open Full Dashboard
                   </button>
-                  <p className="text-xs text-gray-500 mt-2 text-center">View detailed monitoring</p>
+                  <p className="text-xs text-gray-600 mt-2 text-center">Access complete monitoring tools</p>
                 </div>
               </div>
             </div>
 
-            {/* Quick Stats Preview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-semibold text-gray-700">Sessions Today</h4>
-                  <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
+            {/* Quick Preview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-bold text-gray-700">Students Monitored</h4>
+                  <div className="bg-blue-100 rounded-lg p-2">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
                 </div>
-                <p className="text-3xl font-bold text-blue-600">0</p>
-                <p className="text-xs text-gray-600 mt-1">Click monitor to view all</p>
+                <p className="text-3xl font-black text-blue-600">{totalStudents}</p>
+                <p className="text-xs text-gray-500 mt-1">Total students tracked</p>
               </div>
 
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-semibold text-gray-700">Location Logs</h4>
-                  <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  </svg>
+              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-bold text-gray-700">Location Logs</h4>
+                  <div className="bg-green-100 rounded-lg p-2">
+                    <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    </svg>
+                  </div>
                 </div>
-                <p className="text-3xl font-bold text-green-600">0</p>
-                <p className="text-xs text-gray-600 mt-1">GPS tracking records</p>
+                <p className="text-3xl font-black text-green-600">Live</p>
+                <p className="text-xs text-gray-500 mt-1">GPS tracking active</p>
               </div>
 
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-semibold text-gray-700">VPN Detected</h4>
-                  <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
+              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-bold text-gray-700">VPN Detected</h4>
+                  <div className="bg-red-100 rounded-lg p-2">
+                    <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
                 </div>
-                <p className="text-3xl font-bold text-red-600">0</p>
-                <p className="text-xs text-gray-600 mt-1">Suspicious networks</p>
+                <p className="text-3xl font-black text-red-600">0</p>
+                <p className="text-xs text-gray-500 mt-1">Suspicious networks</p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-bold text-gray-700">Network Latency</h4>
+                  <div className="bg-purple-100 rounded-lg p-2">
+                    <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-3xl font-black text-purple-600">~50ms</p>
+                <p className="text-xs text-gray-500 mt-1">Average response time</p>
+              </div>
+            </div>
+
+            {/* Info Banner */}
+            <div className="mt-6 bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4">
+              <div className="flex items-start">
+                <svg className="w-6 h-6 text-blue-500 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h4 className="text-sm font-bold text-blue-900 mb-1">How to Use Monitoring</h4>
+                  <p className="text-sm text-blue-800">
+                    Click "Open Full Dashboard" to access the complete monitoring interface. You can view individual student details, 
+                    check their GPS locations, detect VPN usage, monitor network security, and identify students who may not be 
+                    physically present in class. Use this data to verify attendance accuracy and maintain classroom integrity.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

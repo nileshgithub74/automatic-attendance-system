@@ -74,8 +74,8 @@ export default function VerificationMonitorPage() {
     }
 
     const role = user?.publicMetadata?.role as string;
-    if (!role || (role.toLowerCase() !== 'admin' && role.toLowerCase() !== 'principal')) {
-      toast.error('Access denied. Admin or Principal access required.');
+    if (!role || (role.toLowerCase() !== 'admin' && role.toLowerCase() !== 'principal' && role.toLowerCase() !== 'teacher')) {
+      toast.error('Access denied. Admin, Principal, or Teacher access required.');
       router.push('/unauthorized');
       return;
     }
@@ -114,13 +114,14 @@ export default function VerificationMonitorPage() {
       if (attendanceData.records) {
         attendanceData.records.forEach((record: any) => {
           const dateKey = new Date(record.date).toDateString();
-          const sessionKey = `${dateKey}-${record.className}`;
+          const className = record.class || record.className || 'Unknown';
+          const sessionKey = `${dateKey}-${className}`;
           
           if (!sessionsMap.has(sessionKey)) {
             sessionsMap.set(sessionKey, {
               _id: sessionKey,
               date: dateKey,
-              className: record.className || 'Unknown',
+              className: className,
               teacherName: record.markedBy || 'System',
               createdAt: new Date(record.date),
               studentsPresent: [],

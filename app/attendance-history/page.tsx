@@ -307,7 +307,7 @@ export default function AttendanceHistoryPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {[...attendanceRecords].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((record) => (
+                  {attendanceRecords.map((record) => (
                     <tr key={record.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {new Date(record.date).toLocaleDateString('en-US', {
@@ -334,6 +334,7 @@ export default function AttendanceHistoryPage() {
                         {new Date(record.markedAt).toLocaleTimeString('en-US', {
                           hour: '2-digit',
                           minute: '2-digit',
+                          hour12: true
                         })}
                       </td>
                     </tr>

@@ -16,6 +16,8 @@ export default function MarkAttendancePage() {
   const [showAlreadyMarkedModal, setShowAlreadyMarkedModal] = useState(false);
   const [locationGranted, setLocationGranted] = useState(false);
   const [locationData, setLocationData] = useState<any>(null);
+  const [recognitionResult, setRecognitionResult] = useState<any>(null);
+  const [isRecognizing, setIsRecognizing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -109,6 +111,8 @@ export default function MarkAttendancePage() {
         videoRef.current.onloadedmetadata = () => {
           videoRef.current?.play().then(() => {
             setMessage({ type: 'success', text: 'Camera started! Position your face in the frame.' });
+            // Start real-time face recognition
+            startRealTimeFaceRecognition();
           }).catch(err => {
             console.error('Play error:', err);
             setMessage({ type: 'error', text: 'Failed to play video stream.' });
@@ -131,6 +135,171 @@ export default function MarkAttendancePage() {
       videoRef.current.srcObject = null;
     }
     setIsCapturing(false);
+    setRecognitionResult(null);
+  };
+
+  const startRealTimeFaceRecognition = () => {
+    // Start continuous face recognition every 2 seconds
+    const recognitionInterval = setInterval(() => {
+      if (videoRef.current && !isRecognizing && !capturedImage) {
+        performFaceRecognition();
+      }
+    }, 2000);
+
+    // Store interval reference to clear it later
+    (window as any).recognitionInterval = recognitionInterval;
+  };
+
+  const performFaceRecognition = async () => {
+    if (!videoRef.current || isRecognizing) return;
+
+    setIsRecognizing(true);
+    
+    try {
+      // Capture current frame for recognition
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.drawImage(videoRef.current, 0, 0);
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Send to face recognition API
+        const response = await fetch('/api/face-recognition/identify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ faceImage: imageData }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          setRecognitionResult(result);
+          
+          if (result.recognized) {
+            setMessage({ 
+              type: 'success', 
+              text: `Face recognized! Hello ${result.student.name}!` 
+            });
+            
+            // Automatically mark attendance and redirect
+            await autoMarkAttendance(result.student);
+          } else {
+            setMessage({ 
+              type: 'error', 
+              text: result.message 
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Face recognition error:', error);
+    } finally {
+      setIsRecognizing(false);
+    }
+  };
+
+  const autoMarkAttendance = async (student: any) => {
+    try {
+      // Stop camera and recognition
+      stopCamera();
+      if ((window as any).recognitionInterval) {
+        clearInterval((window as any).recognitionInterval);
+      }
+
+      // Show student details for 5 seconds
+      setMessage({ 
+        type: 'success', 
+        text: `Hello ${student.name}! (Roll: ${student.rollNo}) - Preparing to mark attendance...` 
+      });
+
+      // Wait for 5 seconds to show student details
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      // Now mark attendance
+      setMessage({ 
+        type: 'info', 
+        text: `Marking attendance for ${student.name}...` 
+      });
+
+      // Get network information
+      const networkInfo: any = {};
+      
+      // Get connection type
+      const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+      if (connection) {
+        networkInfo.connectionType = connection.effectiveType || connection.type || 'Unknown';
+        networkInfo.downlink = connection.downlink;
+        networkInfo.rtt = connection.rtt;
+      }
+
+      // Measure latency
+      const startTime = performance.now();
+      try {
+        await fetch('/api/hello', { method: 'HEAD' });
+        const endTime = performance.now();
+        networkInfo.latency = Math.round(endTime - startTime);
+      } catch (error) {
+        networkInfo.latency = 0;
+      }
+
+      // Submit attendance automatically
+      const response = await fetch('/api/student/mark-attendance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          studentId: student.id,
+          studentName: student.name,
+          class: student.class,
+          rollNo: student.rollNo,
+          faceImage: null, // No need to store image for auto-recognition
+          location: locationData,
+          networkInfo,
+          method: 'auto_face_recognition'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage({ 
+          type: 'success', 
+          text: `✅ Attendance marked successfully! Welcome ${student.name}!`
+        });
+        
+        // Redirect to dashboard after 2 seconds
+        setTimeout(() => {
+          router.push('/dashboard/student');
+        }, 2000);
+      } else {
+        // Check if attendance already marked
+        if (data.error && data.error.includes('already marked')) {
+          setMessage({ 
+            type: 'info', 
+            text: `${student.name}, your attendance is already marked for today!`
+          });
+          
+          // Still redirect to dashboard
+          setTimeout(() => {
+            router.push('/dashboard/student');
+          }, 2000);
+        } else {
+          setMessage({ 
+            type: 'error', 
+            text: data.error || 'Failed to mark attendance. Please try again.' 
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error in auto mark attendance:', error);
+      setMessage({ 
+        type: 'error', 
+        text: 'Network error. Please check your connection and try again.' 
+      });
+    }
   };
 
   const captureImage = () => {
@@ -269,6 +438,10 @@ export default function MarkAttendancePage() {
   useEffect(() => {
     return () => {
       stopCamera();
+      // Clear recognition interval
+      if ((window as any).recognitionInterval) {
+        clearInterval((window as any).recognitionInterval);
+      }
     };
   }, []);
 
@@ -384,7 +557,7 @@ export default function MarkAttendancePage() {
                       <h3 className="text-2xl font-bold text-gray-900 mb-2">Camera Preview</h3>
                       <p className="text-sm text-gray-600">Position your face in the center of the frame</p>
                     </div>
-                    <div className="bg-black rounded-xl overflow-hidden mx-auto border-4 border-blue-500 shadow-2xl" style={{ width: '640px', height: '480px', maxWidth: '100%' }}>
+                    <div className="bg-black rounded-xl overflow-hidden mx-auto border-4 border-blue-500 shadow-2xl relative" style={{ width: '640px', height: '480px', maxWidth: '100%' }}>
                       <video
                         ref={videoRef}
                         autoPlay
@@ -398,11 +571,103 @@ export default function MarkAttendancePage() {
                           backgroundColor: '#000'
                         }}
                       />
-                    </div>
-                    <div className="mt-4 text-center">
-                      <div className="inline-flex items-center bg-red-100 text-red-800 px-4 py-2 rounded-full text-sm font-semibold mb-4">
-                        <span className="w-3 h-3 bg-red-600 rounded-full mr-2 animate-pulse"></span>
-                        CAMERA IS LIVE
+                      
+                      {/* Face Recognition Overlay */}
+                      <div className="absolute inset-0 pointer-events-none">
+                        {/* Recognition Status Overlay */}
+                        {recognitionResult && (
+                          <div className="absolute top-4 left-4 right-4 z-10">
+                            {recognitionResult.recognized ? (
+                              // Green rectangle with student info for recognized face
+                              <div className="bg-green-500 bg-opacity-95 text-white p-3 rounded-lg border-2 border-green-300 shadow-xl">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-sm">{recognitionResult.student.name}</div>
+                                    <div className="text-xs opacity-90">
+                                      Roll: {recognitionResult.student.rollNo} | Class: {recognitionResult.student.class}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              // Red rectangle with cross for unrecognized face
+                              <div className="bg-red-500 bg-opacity-95 text-white p-3 rounded-lg border-2 border-red-300 shadow-xl">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-sm">Face not found</div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Face Detection Frame */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className={`w-80 h-80 border-4 rounded-lg transition-all duration-300 ${
+                            recognitionResult?.recognized 
+                              ? 'border-green-400 shadow-lg shadow-green-400/50' 
+                              : recognitionResult?.recognized === false 
+                                ? 'border-red-400 shadow-lg shadow-red-400/50' 
+                                : 'border-blue-400 shadow-lg shadow-blue-400/50'
+                          } ${isRecognizing ? 'animate-pulse' : ''}`}>
+                            
+                            {/* Corner Markers */}
+                            <div className="relative w-full h-full">
+                              {/* Top-left corner */}
+                              <div className={`absolute -top-1 -left-1 w-8 h-8 border-l-4 border-t-4 ${
+                                recognitionResult?.recognized 
+                                  ? 'border-green-300' 
+                                  : recognitionResult?.recognized === false 
+                                    ? 'border-red-300' 
+                                    : 'border-blue-300'
+                              }`}></div>
+                              {/* Top-right corner */}
+                              <div className={`absolute -top-1 -right-1 w-8 h-8 border-r-4 border-t-4 ${
+                                recognitionResult?.recognized 
+                                  ? 'border-green-300' 
+                                  : recognitionResult?.recognized === false 
+                                    ? 'border-red-300' 
+                                    : 'border-blue-300'
+                              }`}></div>
+                              {/* Bottom-left corner */}
+                              <div className={`absolute -bottom-1 -left-1 w-8 h-8 border-l-4 border-b-4 ${
+                                recognitionResult?.recognized 
+                                  ? 'border-green-300' 
+                                  : recognitionResult?.recognized === false 
+                                    ? 'border-red-300' 
+                                    : 'border-blue-300'
+                              }`}></div>
+                              {/* Bottom-right corner */}
+                              <div className={`absolute -bottom-1 -right-1 w-8 h-8 border-r-4 border-b-4 ${
+                                recognitionResult?.recognized 
+                                  ? 'border-green-300' 
+                                  : recognitionResult?.recognized === false 
+                                    ? 'border-red-300' 
+                                    : 'border-blue-300'
+                              }`}></div>
+                              
+                              {/* Center recognition status */}
+                              {isRecognizing && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                                    Recognizing Face...
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <div className="mt-4 flex gap-3 justify-center">

@@ -17,8 +17,6 @@ export default function VerificationSessionPage() {
   const [totalImages, setTotalImages] = useState(10);
   const [cameraReady, setCameraReady] = useState(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [existingSession, setExistingSession] = useState<any>(null);
-  const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -37,8 +35,8 @@ export default function VerificationSessionPage() {
     // Get location
     getLocation();
     
-    // Check for existing active session
-    checkActiveSession();
+    // Initialize camera automatically
+    initializeCamera();
   }, [isLoaded, user, router]);
 
   const getLocation = () => {
@@ -55,45 +53,6 @@ export default function VerificationSessionPage() {
           toast.error('Failed to get location. Please enable location services.');
         }
       );
-    }
-  };
-
-  const checkActiveSession = async () => {
-    try {
-      const response = await fetch('/api/verification/session/cancel');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.hasActiveSession) {
-          setExistingSession(data.activeSession);
-          toast.error('You have an active verification session. Please complete or cancel it first.');
-        }
-      }
-    } catch (error) {
-      console.error('Error checking active session:', error);
-    } finally {
-      setCheckingSession(false);
-    }
-  };
-
-  const cancelExistingSession = async () => {
-    if (!existingSession) return;
-
-    try {
-      const response = await fetch('/api/verification/session/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: existingSession.sessionId }),
-      });
-
-      if (response.ok) {
-        setExistingSession(null);
-        toast.success('Previous session cancelled successfully');
-      } else {
-        toast.error('Failed to cancel session');
-      }
-    } catch (error) {
-      console.error('Error cancelling session:', error);
-      toast.error('Error cancelling session');
     }
   };
 
@@ -130,45 +89,24 @@ export default function VerificationSessionPage() {
     }
 
     try {
-      const response = await fetch('/api/verification/session/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          classId: 'class_1', // You can make this dynamic
-          className: 'Class 10A',
-          duration,
-          location: {
-            latitude: location.latitude,
-            longitude: location.longitude,
-            accuracy: 10,
-          },
-          studentsMarked: [], // Add student IDs from attendance
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSessionId(data.session.sessionId);
-        setTotalImages(data.session.totalImages);
-        setTimeRemaining(duration * 60);
-        setSessionActive(true);
-        toast.success('Verification session started!');
-        
-        // Start countdown timer
-        startTimer();
-        
-        // Start automatic image capture
-        startImageCapture();
-      } else {
-        const errorData = await response.json();
-        if (response.status === 409) {
-          // Conflict - existing session
-          setExistingSession(errorData.existingSession);
-          toast.error(errorData.error);
-        } else {
-          toast.error(errorData.error || 'Failed to start session');
-        }
-      }
+      // Generate a unique session ID
+      const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setSessionId(newSessionId);
+      
+      // Set total images to capture (5-10 images)
+      const imagesToCapture = Math.floor(Math.random() * 6) + 5; // Random between 5-10
+      setTotalImages(imagesToCapture);
+      setTimeRemaining(duration * 60);
+      setSessionActive(true);
+      
+      toast.success(`Verification session started! Will capture ${imagesToCapture} images.`);
+      
+      // Start countdown timer
+      startTimer();
+      
+      // Start automatic image capture
+      startImageCapture();
+      
     } catch (error) {
       console.error('Error starting session:', error);
       toast.error('Error starting verification session');
@@ -189,22 +127,24 @@ export default function VerificationSessionPage() {
   };
 
   const startImageCapture = () => {
-    const captureInterval = 30; // seconds
+    const captureInterval = 10; // seconds - capture every 10 seconds
     let count = 0;
 
     const interval = setInterval(() => {
       if (count >= totalImages) {
         clearInterval(interval);
+        // Start AI verification process
+        processImagesWithAI();
         return;
       }
 
-      captureImage();
       count++;
       setCapturedImages(count);
+      captureImage(count);
     }, captureInterval * 1000);
   };
 
-  const captureImage = () => {
+  const captureImage = async (sequenceNumber: number) => {
     if (!videoRef.current) return;
 
     const canvas = document.createElement('canvas');
@@ -216,27 +156,157 @@ export default function VerificationSessionPage() {
       ctx.drawImage(videoRef.current, 0, 0);
       const imageData = canvas.toDataURL('image/jpeg', 0.9);
       
-      // Upload image to backend
-      uploadImage(imageData);
+      // Upload image to Cloudinary
+      await uploadImageToCloudinary(imageData, sequenceNumber);
       
-      toast.success(`Image ${capturedImages + 1}/${totalImages} captured`);
+      toast.success(`Image ${sequenceNumber}/${totalImages} captured and uploaded`);
     }
   };
 
-  const uploadImage = async (imageData: string) => {
+  const uploadImageToCloudinary = async (imageData: string, sequenceNumber: number) => {
     try {
-      // This endpoint needs to be created
-      await fetch('/api/verification/session/upload-image', {
+      const response = await fetch('/api/verification/upload-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
           imageData,
-          sequenceNumber: capturedImages + 1,
+          sequenceNumber,
+          location,
+          timestamp: new Date().toISOString(),
         }),
       });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Image uploaded to Cloudinary:', data.imageUrl);
+      } else {
+        console.error('Failed to upload image to Cloudinary');
+      }
     } catch (error) {
       console.error('Error uploading image:', error);
+    }
+  };
+
+  const processImagesWithAI = async () => {
+    toast.info('Processing images with AI... This may take a few moments.');
+    
+    try {
+      // Option 1: Auto-mark attendance for all students in class
+      const autoMarkResponse = await fetch('/api/verification/auto-mark-attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          className: 'Class 10A', // You can make this dynamic
+          totalImages: capturedImages,
+        }),
+      });
+
+      if (autoMarkResponse.ok) {
+        const autoMarkResults = await autoMarkResponse.json();
+        toast.success(`Attendance automatically marked! ${autoMarkResults.summary.presentCount} present, ${autoMarkResults.summary.absentCount} absent`);
+        
+        // Show detailed results
+        console.log('Auto-marked attendance results:', autoMarkResults);
+        
+        // Display results to teacher
+        displayAttendanceResults(autoMarkResults);
+        
+      } else {
+        // Fallback to manual verification if auto-marking fails
+        await processManualVerification();
+      }
+    } catch (error) {
+      console.error('Error processing images with AI:', error);
+      toast.error('Error during AI verification');
+      await processManualVerification();
+    }
+  };
+
+  const processManualVerification = async () => {
+    try {
+      // Get today's attendance records to know which students to verify
+      const today = new Date().toISOString().split('T')[0];
+      const attendanceResponse = await fetch(`/api/attendance?date=${today}`);
+      const attendanceData = attendanceResponse.ok ? await attendanceResponse.json() : [];
+      
+      // Filter students who marked attendance today
+      const studentsToVerify = attendanceData.filter((record: any) => 
+        record.status === 'present' && record.method === 'face_recognition'
+      );
+
+      // Call AI verification API
+      const verificationResponse = await fetch('/api/verification/process-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          studentsToVerify: studentsToVerify.map((s: any) => ({
+            studentId: s.studentId,
+            studentName: s.studentName,
+            class: s.class
+          })),
+          totalImages: capturedImages,
+        }),
+      });
+
+      if (verificationResponse.ok) {
+        const verificationResults = await verificationResponse.json();
+        toast.success('AI verification completed!');
+        
+        // Update attendance based on AI results
+        await updateAttendanceWithAIResults(verificationResults);
+      } else {
+        toast.error('AI verification failed');
+      }
+    } catch (error) {
+      console.error('Error in manual verification:', error);
+      toast.error('Manual verification failed');
+    }
+  };
+
+  const displayAttendanceResults = (results: any) => {
+    // Create a detailed summary for the teacher
+    const summary = `
+📊 Attendance Summary:
+👥 Total Students: ${results.summary.totalStudents}
+✅ Present: ${results.summary.presentCount}
+❌ Absent: ${results.summary.absentCount}
+
+Present Students:
+${results.presentStudents.map((s: any) => 
+  `• ${s.name} (${s.rollNo}) - ${s.confidence * 100}% confidence`
+).join('\n')}
+
+Absent Students:
+${results.absentStudents.map((s: any) => 
+  `• ${s.name} (${s.rollNo}) - ${s.reason}`
+).join('\n')}
+    `;
+    
+    console.log(summary);
+    toast.success('Attendance marked automatically using face recognition!');
+  };
+
+  const updateAttendanceWithAIResults = async (results: any) => {
+    try {
+      const response = await fetch('/api/verification/update-attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          verificationResults: results,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`Attendance updated! ${data.verified} students verified as present.`);
+      }
+    } catch (error) {
+      console.error('Error updating attendance:', error);
+      toast.error('Failed to update attendance');
     }
   };
 
@@ -330,41 +400,6 @@ export default function VerificationSessionPage() {
             <p className="text-purple-100 text-lg">Automated classroom attendance verification using AI face recognition</p>
           </div>
         </div>
-
-        {/* Existing Session Warning */}
-        {existingSession && (
-          <div className="mb-8 bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-lg">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg className="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div className="ml-3 flex-1">
-                <h3 className="text-lg font-medium text-yellow-800">Active Session Found</h3>
-                <p className="mt-1 text-sm text-yellow-700">
-                  You have an active verification session for <strong>{existingSession.className}</strong> 
-                  started at {new Date(existingSession.startTime).toLocaleTimeString()}.
-                  You must complete or cancel this session before starting a new one.
-                </p>
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={cancelExistingSession}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
-                  >
-                    Cancel Existing Session
-                  </button>
-                  <button
-                    onClick={() => router.push(`/dashboard/teacher/verification/results?sessionId=${existingSession.sessionId}`)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
-                  >
-                    View Session Details
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Session Status */}
         {sessionActive && (
@@ -483,14 +518,14 @@ export default function VerificationSessionPage() {
               
               <button
                 onClick={startSession}
-                disabled={!cameraReady || !location || existingSession}
+                disabled={!cameraReady || !location}
                 className="flex-1 px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                {existingSession ? 'Complete Existing Session First' : 'Start Verification Session'}
+                Start AI Verification Session
               </button>
             </div>
           </div>
