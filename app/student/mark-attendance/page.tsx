@@ -18,6 +18,8 @@ export default function MarkAttendancePage() {
   const [locationData, setLocationData] = useState<any>(null);
   const [recognitionResult, setRecognitionResult] = useState<any>(null);
   const [isRecognizing, setIsRecognizing] = useState(false);
+  const [showStudentDetails, setShowStudentDetails] = useState(false);
+  const [detailsTimer, setDetailsTimer] = useState<number>(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -136,6 +138,8 @@ export default function MarkAttendancePage() {
     }
     setIsCapturing(false);
     setRecognitionResult(null);
+    setShowStudentDetails(false);
+    setDetailsTimer(0);
   };
 
   const startRealTimeFaceRecognition = () => {
@@ -178,23 +182,48 @@ export default function MarkAttendancePage() {
           setRecognitionResult(result);
           
           if (result.recognized) {
+            // Show student details for 10 seconds
+            setShowStudentDetails(true);
             setMessage({ 
               type: 'success', 
               text: `Face recognized! Hello ${result.student.name}!` 
             });
             
-            // Automatically mark attendance and redirect
-            await autoMarkAttendance(result.student);
+            // Start 10-second countdown
+            let countdown = 10;
+            setDetailsTimer(countdown);
+            
+            const timerInterval = setInterval(() => {
+              countdown--;
+              setDetailsTimer(countdown);
+              
+              if (countdown <= 0) {
+                clearInterval(timerInterval);
+                setShowStudentDetails(false);
+                // Automatically mark attendance after 10 seconds
+                autoMarkAttendance(result.student);
+              }
+            }, 1000);
+            
           } else {
             setMessage({ 
               type: 'error', 
-              text: result.message 
+              text: 'Face not found - Please position your face properly in the frame' 
             });
+            
+            // Show error for 3 seconds then continue recognition
+            setTimeout(() => {
+              setRecognitionResult(null);
+            }, 3000);
           }
         }
       }
     } catch (error) {
       console.error('Face recognition error:', error);
+      setMessage({ 
+        type: 'error', 
+        text: 'Face recognition failed. Please try again.' 
+      });
     } finally {
       setIsRecognizing(false);
     }
@@ -208,16 +237,7 @@ export default function MarkAttendancePage() {
         clearInterval((window as any).recognitionInterval);
       }
 
-      // Show student details for 5 seconds
-      setMessage({ 
-        type: 'success', 
-        text: `Hello ${student.name}! (Roll: ${student.rollNo}) - Preparing to mark attendance...` 
-      });
-
-      // Wait for 5 seconds to show student details
-      await new Promise(resolve => setTimeout(resolve, 5000));
-
-      // Now mark attendance
+      // Show processing message
       setMessage({ 
         type: 'info', 
         text: `Marking attendance for ${student.name}...` 
@@ -270,10 +290,10 @@ export default function MarkAttendancePage() {
           text: `✅ Attendance marked successfully! Welcome ${student.name}!`
         });
         
-        // Redirect to dashboard after 2 seconds
+        // Redirect to dashboard after 3 seconds
         setTimeout(() => {
           router.push('/dashboard/student');
-        }, 2000);
+        }, 3000);
       } else {
         // Check if attendance already marked
         if (data.error && data.error.includes('already marked')) {
@@ -285,7 +305,7 @@ export default function MarkAttendancePage() {
           // Still redirect to dashboard
           setTimeout(() => {
             router.push('/dashboard/student');
-          }, 2000);
+          }, 3000);
         } else {
           setMessage({ 
             type: 'error', 
@@ -442,6 +462,9 @@ export default function MarkAttendancePage() {
       if ((window as any).recognitionInterval) {
         clearInterval((window as any).recognitionInterval);
       }
+      // Clear any countdown timers
+      setShowStudentDetails(false);
+      setDetailsTimer(0);
     };
   }, []);
 
@@ -578,33 +601,52 @@ export default function MarkAttendancePage() {
                         {recognitionResult && (
                           <div className="absolute top-4 left-4 right-4 z-10">
                             {recognitionResult.recognized ? (
-                              // Green rectangle with student info for recognized face
-                              <div className="bg-green-500 bg-opacity-95 text-white p-3 rounded-lg border-2 border-green-300 shadow-xl">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                  </div>
-                                  <div>
-                                    <div className="font-bold text-sm">{recognitionResult.student.name}</div>
-                                    <div className="text-xs opacity-90">
-                                      Roll: {recognitionResult.student.rollNo} | Class: {recognitionResult.student.class}
+                              // Green rectangle with student info and countdown for recognized face
+                              <div className="bg-green-500 bg-opacity-95 text-white p-4 rounded-lg border-2 border-green-300 shadow-xl">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                                      <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-lg">{recognitionResult.student.name}</div>
+                                      <div className="text-sm opacity-90">
+                                        Roll No: {recognitionResult.student.rollNo}
+                                      </div>
+                                      <div className="text-sm opacity-90">
+                                        Class: {recognitionResult.student.class}
+                                      </div>
                                     </div>
                                   </div>
+                                  {showStudentDetails && (
+                                    <div className="text-center">
+                                      <div className="text-2xl font-bold">{detailsTimer}</div>
+                                      <div className="text-xs">seconds</div>
+                                    </div>
+                                  )}
                                 </div>
+                                {showStudentDetails && (
+                                  <div className="mt-2 text-center text-sm">
+                                    Marking attendance automatically...
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               // Red rectangle with cross for unrecognized face
-                              <div className="bg-red-500 bg-opacity-95 text-white p-3 rounded-lg border-2 border-red-300 shadow-xl">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                                    <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <div className="bg-red-500 bg-opacity-95 text-white p-4 rounded-lg border-2 border-red-300 shadow-xl">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                   </div>
                                   <div>
-                                    <div className="font-bold text-sm">Face not found</div>
+                                    <div className="font-bold text-lg">Face not found</div>
+                                    <div className="text-sm opacity-90">
+                                      Please position your face properly in the frame
+                                    </div>
                                   </div>
                                 </div>
                               </div>
