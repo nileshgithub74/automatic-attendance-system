@@ -55,6 +55,7 @@ export async function PATCH(request: Request) {
       { 
         $set: { 
           status,
+          markedAt: new Date(), // Update the marked time to current time
           updatedAt: new Date(),
           updatedBy: user?.emailAddresses[0]?.emailAddress || 'Admin'
         } 

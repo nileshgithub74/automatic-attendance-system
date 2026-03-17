@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
             aiFlags: result.flags,
             aiProcessedAt: new Date(),
             verificationSessionId: sessionId,
+            markedAt: new Date(), // Update the marked time to current verification time
           };
 
           // If AI says student is NOT present, update status to absent

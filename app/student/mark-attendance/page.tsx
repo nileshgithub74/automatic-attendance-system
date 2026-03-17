@@ -182,16 +182,16 @@ export default function MarkAttendancePage() {
           setRecognitionResult(result);
           
           if (result.recognized) {
-            // Show student details for 10 seconds
+            // Show student details for 10 seconds (timer hidden from UI)
             setShowStudentDetails(true);
             setMessage({ 
               type: 'success', 
               text: `Face recognized! Hello ${result.student.name}!` 
             });
             
-            // Start 10-second countdown
+            // Start 10-second countdown (internal only, not displayed)
             let countdown = 10;
-            setDetailsTimer(countdown);
+            setDetailsTimer(countdown); // Keep for internal tracking but don't show
             
             const timerInterval = setInterval(() => {
               countdown--;
@@ -290,10 +290,10 @@ export default function MarkAttendancePage() {
           text: `✅ Attendance marked successfully! Welcome ${student.name}!`
         });
         
-        // Redirect to dashboard after 3 seconds
+        // Redirect to dashboard after 2 seconds
         setTimeout(() => {
           router.push('/dashboard/student');
-        }, 3000);
+        }, 2000);
       } else {
         // Check if attendance already marked
         if (data.error && data.error.includes('already marked')) {
@@ -305,7 +305,7 @@ export default function MarkAttendancePage() {
           // Still redirect to dashboard
           setTimeout(() => {
             router.push('/dashboard/student');
-          }, 3000);
+          }, 2000);
         } else {
           setMessage({ 
             type: 'error', 
