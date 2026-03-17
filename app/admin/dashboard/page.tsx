@@ -1571,7 +1571,7 @@ export default function AdminDashboard() {
                       </button>
                       <button
                         onClick={async () => {
-                          if (!confirm('Are you sure you want to reset today\'s attendance? This will delete all attendance records for today.')) {
+                          if (!confirm('Are you sure you want to delete today\'s attendance? This will permanently remove all attendance records for today and cannot be undone.')) {
                             return;
                           }
                           try {
@@ -1581,7 +1581,7 @@ export default function AdminDashboard() {
                             if (response.ok) {
                               setSuccessPopup({
                                 show: true,
-                                message: 'Today\'s attendance has been reset successfully!',
+                                message: 'Today\'s attendance has been deleted successfully!',
                               });
                               fetchFaceAttendance();
                               setTimeout(() => setSuccessPopup({ show: false, message: '' }), 3000);
@@ -1589,11 +1589,11 @@ export default function AdminDashboard() {
                               const data = await response.json();
                               setErrorPopup({
                                 show: true,
-                                message: data.error || 'Failed to reset attendance',
+                                message: data.error || 'Failed to delete attendance',
                               });
                             }
                           } catch (error) {
-                            console.error('Error resetting attendance:', error);
+                            console.error('Error deleting attendance:', error);
                             setErrorPopup({
                               show: true,
                               message: 'Network error. Please try again.',
@@ -1602,7 +1602,7 @@ export default function AdminDashboard() {
                         }}
                         className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
                       >
-                        Reset Today's Attendance
+                        Delete Today's Attendance
                       </button>
                     </div>
                   </div>

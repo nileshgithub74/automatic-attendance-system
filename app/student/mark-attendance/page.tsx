@@ -618,14 +618,6 @@ export default function MarkAttendancePage() {
                                       Roll: {recognitionResult.student.rollNo} | Class: {recognitionResult.student.class}
                                     </div>
                                   </div>
-                                  
-                                  {/* Countdown timer */}
-                                  {showStudentDetails && (
-                                    <div className="text-center bg-white bg-opacity-20 rounded-lg px-4 py-2">
-                                      <div className="text-3xl font-bold">{detailsTimer}</div>
-                                      <div className="text-sm opacity-90">sec</div>
-                                    </div>
-                                  )}
                                 </div>
                                 
                                 {showStudentDetails && (
