@@ -182,28 +182,18 @@ export default function MarkAttendancePage() {
           setRecognitionResult(result);
           
           if (result.recognized) {
-            // Show student details for 10 seconds (timer hidden from UI)
+            // Show student details for 5 seconds
             setShowStudentDetails(true);
             setMessage({ 
               type: 'success', 
               text: `Face recognized! Hello ${result.student.name}!` 
             });
             
-            // Start 10-second countdown (internal only, not displayed)
-            let countdown = 10;
-            setDetailsTimer(countdown); // Keep for internal tracking but don't show
-            
-            const timerInterval = setInterval(() => {
-              countdown--;
-              setDetailsTimer(countdown);
-              
-              if (countdown <= 0) {
-                clearInterval(timerInterval);
-                setShowStudentDetails(false);
-                // Automatically mark attendance after 10 seconds
-                autoMarkAttendance(result.student);
-              }
-            }, 1000);
+            // Wait 5 seconds then mark attendance
+            setTimeout(() => {
+              setShowStudentDetails(false);
+              autoMarkAttendance(result.student);
+            }, 5000);
             
           } else {
             setMessage({ 
