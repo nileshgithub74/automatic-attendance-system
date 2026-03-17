@@ -302,7 +302,7 @@ export default function AttendanceHistoryPage() {
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Time
+                      Marked At
                     </th>
                   </tr>
                 </thead>
@@ -331,11 +331,22 @@ export default function AttendanceHistoryPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(record.markedAt).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900">
+                            {new Date(record.markedAt).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              hour12: true
+                            })}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {new Date(record.markedAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   ))}

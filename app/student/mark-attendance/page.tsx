@@ -597,54 +597,58 @@ export default function MarkAttendancePage() {
                       
                       {/* Face Recognition Overlay */}
                       <div className="absolute inset-0 pointer-events-none">
-                        {/* Recognition Status Overlay */}
+                        {/* Recognition Status Overlay - Positioned at top center */}
                         {recognitionResult && (
-                          <div className="absolute top-4 left-4 right-4 z-10">
+                          <div className="absolute top-6 left-6 right-6 z-10">
                             {recognitionResult.recognized ? (
-                              // Green rectangle with student info and countdown for recognized face
-                              <div className="bg-green-500 bg-opacity-95 text-white p-4 rounded-lg border-2 border-green-300 shadow-xl">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                                      <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                      </svg>
-                                    </div>
-                                    <div>
-                                      <div className="font-bold text-lg">{recognitionResult.student.name}</div>
-                                      <div className="text-sm opacity-90">
-                                        Roll No: {recognitionResult.student.rollNo}
-                                      </div>
-                                      <div className="text-sm opacity-90">
-                                        Class: {recognitionResult.student.class}
-                                      </div>
+                              // Green banner with student info exactly like the image
+                              <div className="bg-green-500 text-white p-4 rounded-xl shadow-2xl border-2 border-green-400">
+                                <div className="flex items-center gap-4">
+                                  {/* Checkmark icon */}
+                                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </div>
+                                  
+                                  {/* Student details */}
+                                  <div className="flex-1">
+                                    <div className="text-2xl font-bold mb-1">{recognitionResult.student.name}</div>
+                                    <div className="text-lg opacity-95">
+                                      Roll: {recognitionResult.student.rollNo} | Class: {recognitionResult.student.class}
                                     </div>
                                   </div>
+                                  
+                                  {/* Countdown timer */}
                                   {showStudentDetails && (
-                                    <div className="text-center">
-                                      <div className="text-2xl font-bold">{detailsTimer}</div>
-                                      <div className="text-xs">seconds</div>
+                                    <div className="text-center bg-white bg-opacity-20 rounded-lg px-4 py-2">
+                                      <div className="text-3xl font-bold">{detailsTimer}</div>
+                                      <div className="text-sm opacity-90">sec</div>
                                     </div>
                                   )}
                                 </div>
+                                
                                 {showStudentDetails && (
-                                  <div className="mt-2 text-center text-sm">
+                                  <div className="mt-3 text-center text-lg font-medium bg-white bg-opacity-20 rounded-lg py-2">
                                     Marking attendance automatically...
                                   </div>
                                 )}
                               </div>
                             ) : (
-                              // Red rectangle with cross for unrecognized face
-                              <div className="bg-red-500 bg-opacity-95 text-white p-4 rounded-lg border-2 border-red-300 shadow-xl">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                                    <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              // Red banner for unrecognized face
+                              <div className="bg-red-500 text-white p-4 rounded-xl shadow-2xl border-2 border-red-400">
+                                <div className="flex items-center gap-4">
+                                  {/* X icon */}
+                                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                   </div>
-                                  <div>
-                                    <div className="font-bold text-lg">Face not found</div>
-                                    <div className="text-sm opacity-90">
+                                  
+                                  {/* Error message */}
+                                  <div className="flex-1">
+                                    <div className="text-2xl font-bold mb-1">Face not found</div>
+                                    <div className="text-lg opacity-95">
                                       Please position your face properly in the frame
                                     </div>
                                   </div>
@@ -654,62 +658,27 @@ export default function MarkAttendancePage() {
                           </div>
                         )}
 
-                        {/* Face Detection Frame */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className={`w-80 h-80 border-4 rounded-lg transition-all duration-300 ${
-                            recognitionResult?.recognized 
-                              ? 'border-green-400 shadow-lg shadow-green-400/50' 
-                              : recognitionResult?.recognized === false 
-                                ? 'border-red-400 shadow-lg shadow-red-400/50' 
-                                : 'border-blue-400 shadow-lg shadow-blue-400/50'
-                          } ${isRecognizing ? 'animate-pulse' : ''}`}>
-                            
-                            {/* Corner Markers */}
-                            <div className="relative w-full h-full">
-                              {/* Top-left corner */}
-                              <div className={`absolute -top-1 -left-1 w-8 h-8 border-l-4 border-t-4 ${
-                                recognitionResult?.recognized 
-                                  ? 'border-green-300' 
-                                  : recognitionResult?.recognized === false 
-                                    ? 'border-red-300' 
-                                    : 'border-blue-300'
-                              }`}></div>
-                              {/* Top-right corner */}
-                              <div className={`absolute -top-1 -right-1 w-8 h-8 border-r-4 border-t-4 ${
-                                recognitionResult?.recognized 
-                                  ? 'border-green-300' 
-                                  : recognitionResult?.recognized === false 
-                                    ? 'border-red-300' 
-                                    : 'border-blue-300'
-                              }`}></div>
-                              {/* Bottom-left corner */}
-                              <div className={`absolute -bottom-1 -left-1 w-8 h-8 border-l-4 border-b-4 ${
-                                recognitionResult?.recognized 
-                                  ? 'border-green-300' 
-                                  : recognitionResult?.recognized === false 
-                                    ? 'border-red-300' 
-                                    : 'border-blue-300'
-                              }`}></div>
-                              {/* Bottom-right corner */}
-                              <div className={`absolute -bottom-1 -right-1 w-8 h-8 border-r-4 border-b-4 ${
-                                recognitionResult?.recognized 
-                                  ? 'border-green-300' 
-                                  : recognitionResult?.recognized === false 
-                                    ? 'border-red-300' 
-                                    : 'border-blue-300'
-                              }`}></div>
-                              
-                              {/* Center recognition status */}
-                              {isRecognizing && (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                                    Recognizing Face...
-                                  </div>
-                                </div>
-                              )}
+                        {/* Simple border overlay for recognition feedback */}
+                        {recognitionResult?.recognized && (
+                          <div className="absolute inset-4">
+                            <div className="w-full h-full border-4 border-green-400 rounded-lg shadow-lg shadow-green-400/30"></div>
+                          </div>
+                        )}
+                        
+                        {recognitionResult?.recognized === false && (
+                          <div className="absolute inset-4">
+                            <div className="w-full h-full border-4 border-red-400 rounded-lg shadow-lg shadow-red-400/30"></div>
+                          </div>
+                        )}
+                        
+                        {/* Center recognition status */}
+                        {isRecognizing && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                              Recognizing Face...
                             </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                     <div className="mt-4 flex gap-3 justify-center">
