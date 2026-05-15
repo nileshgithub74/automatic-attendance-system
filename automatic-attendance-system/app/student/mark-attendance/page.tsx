@@ -182,6 +182,13 @@ export default function MarkAttendancePage() {
         if (response.ok) {
           const result = await response.json();
           console.log('✅ Face recognition response:', result);
+          console.log('📊 Recognition details:', {
+            success: result.success,
+            recognized: result.recognized,
+            hasStudent: !!result.student,
+            studentName: result.student?.name
+          });
+          
           setRecognitionResult(result);
           
           if (result.recognized) {
@@ -198,6 +205,7 @@ export default function MarkAttendancePage() {
             });
             
             console.log('✅ Face matched:', result.student.name, 'Confidence:', result.confidence);
+            console.log('🎯 Setting recognitionResult with recognized=true');
             
             // Wait 5 seconds then mark attendance
             setTimeout(() => {
@@ -609,7 +617,7 @@ export default function MarkAttendancePage() {
                         {recognitionResult?.recognized && (
                           <div className="absolute top-6 left-6 right-6 z-10">
                             {/* Green banner with student info */}
-                            <div className="bg-green-500 text-white p-4 rounded-xl shadow-2xl border-2 border-green-400">
+                            <div className="bg-green-500 text-white p-4 rounded-xl shadow-2xl border-2 border-green-400 animate-fade-in">
                               <div className="flex items-center gap-4">
                                 {/* Checkmark icon */}
                                 <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
@@ -620,9 +628,9 @@ export default function MarkAttendancePage() {
                                 
                                 {/* Student details */}
                                 <div className="flex-1">
-                                  <div className="text-2xl font-bold mb-1">{recognitionResult.student.name}</div>
+                                  <div className="text-2xl font-bold mb-1">{recognitionResult.student?.name || 'Student'}</div>
                                   <div className="text-lg opacity-95">
-                                    Roll: {recognitionResult.student.rollNo} | Class: {recognitionResult.student.class}
+                                    Roll: {recognitionResult.student?.rollNo || 'N/A'} | Class: {recognitionResult.student?.class || 'N/A'}
                                   </div>
                                 </div>
                               </div>
@@ -639,14 +647,14 @@ export default function MarkAttendancePage() {
                         {/* Green border when face is recognized */}
                         {recognitionResult?.recognized && (
                           <div className="absolute inset-4">
-                            <div className="w-full h-full border-4 border-green-400 rounded-lg shadow-lg shadow-green-400/30"></div>
+                            <div className="w-full h-full border-4 border-green-400 rounded-lg shadow-lg shadow-green-400/30 animate-pulse"></div>
                           </div>
                         )}
                         
                         {/* Center recognition status */}
                         {isRecognizing && !recognitionResult?.recognized && (
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                            <div className="bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm font-medium animate-pulse">
                               🔍 Looking for your face...
                             </div>
                           </div>

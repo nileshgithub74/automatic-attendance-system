@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import { extractEmbedding } from '@/lib/aiService';
 import mongoose from 'mongoose';
 
 // Configure route to handle large payloads
@@ -142,6 +143,62 @@ export async function POST(request: NextRequest) {
     
     console.log(`✅ Successfully uploaded ${uploadedImages.length}/${images.length} images to Cloudinary`);
     
+    console.log('🧠 Extracting face embeddings from images...');
+    
+    // Extract embeddings from each image for face recognition
+    const embeddings = [];
+    let totalQuality = 0;
+
+    for (let i = 0; i < images.length; i++) {
+      try {
+        console.log(`🔍 Processing embedding ${i + 1}/${images.length}...`);
+        const result = await extractEmbedding(images[i]);
+
+        if (result.faceDetected && result.embedding.length > 0) {
+          embeddings.push({
+            embedding: result.embedding,
+            imageUrl: uploadedImages[i]?.url || null,
+            captureDate: new Date(),
+            quality: result.quality,
+            model: 'FaceNet'
+          });
+          totalQuality += result.quality;
+          console.log(`✅ Embedding ${i + 1} extracted successfully (quality: ${result.quality})`);
+        } else {
+          console.warn(`⚠️ No face detected in image ${i + 1}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error processing embedding ${i + 1}:`, error);
+      }
+    }
+
+    if (embeddings.length === 0) {
+      console.error('❌ No faces detected in any image');
+      return NextResponse.json(
+        { message: 'No faces detected in the images. Please ensure your face is clearly visible.' },
+        { status: 400 }
+      );
+    }
+
+    console.log(`✅ Successfully extracted ${embeddings.length} embeddings`);
+
+    // Calculate average embedding for better recognition accuracy
+    const embeddingLength = embeddings[0].embedding.length;
+    const averageEmbedding = new Array(embeddingLength).fill(0);
+
+    for (const emb of embeddings) {
+      for (let i = 0; i < embeddingLength; i++) {
+        averageEmbedding[i] += emb.embedding[i];
+      }
+    }
+
+    for (let i = 0; i < embeddingLength; i++) {
+      averageEmbedding[i] /= embeddings.length;
+    }
+
+    const averageQuality = totalQuality / embeddings.length;
+    console.log(`📊 Average embedding quality: ${averageQuality}`);
+    
     console.log('💾 Saving face registration to database...');
     
     // Check if registration already exists
@@ -176,6 +233,41 @@ export async function POST(request: NextRequest) {
       await db.collection('face_registrations').insertOne(registrationData);
       console.log('✅ Created new face registration');
     }
+    
+    // Store face embeddings for recognition
+    console.log('💾 Saving face embeddings for recognition...');
+    
+    let studentObjectId;
+    try {
+      studentObjectId = new mongoose.Types.ObjectId(studentId);
+    } catch (error) {
+      // If studentId is not a valid ObjectId, use it as string
+      console.log('⚠️ StudentId is not a valid ObjectId, using as string');
+      studentObjectId = studentId;
+    }
+    
+    const faceEmbeddingDoc = {
+      studentId: studentObjectId,
+      studentName,
+      studentRollNumber: studentId, // Will be updated if we find the user
+      embeddings,
+      averageEmbedding,
+      totalImages: embeddings.length,
+      averageQuality,
+      lastUpdated: new Date(),
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    // Upsert face embeddings (update if exists, insert if not)
+    await db.collection('faceEmbeddings').updateOne(
+      { studentId: studentObjectId },
+      { $set: faceEmbeddingDoc },
+      { upsert: true }
+    );
+    
+    console.log('✅ Face embeddings saved successfully');
     
     // Update student record to mark face as registered
     console.log('🔄 Updating user record for studentId:', studentId, 'Type:', typeof studentId);
@@ -307,7 +399,9 @@ export async function POST(request: NextRequest) {
       message: 'Face registration completed successfully',
       isUpdate: !!existingReg,
       locationCaptured: !!location,
-      imagesUploaded: uploadedImages.length
+      imagesUploaded: uploadedImages.length,
+      embeddingsCreated: embeddings.length,
+      averageQuality: Math.round(averageQuality * 100) / 100
     });
   } catch (error: any) {
     console.error('❌ Error registering face:', error);
