@@ -58,7 +58,7 @@ export default function StudentDashboard() {
       return; // Wait for Clerk to load
     }
 
-    console.log('🔍 Student Dashboard - Checking authentication...');
+    console.log('Student Dashboard - Checking authentication...');
     console.log('Clerk user:', user?.id);
     console.log('Clerk role:', user?.publicMetadata?.role);
 
@@ -68,7 +68,7 @@ export default function StudentDashboard() {
 
     if (studentData && role?.toLowerCase() === 'student') {
       // Custom login system
-      console.log('✅ Using custom login (localStorage)');
+      console.log('Using custom login (localStorage)');
       const student = JSON.parse(studentData);
       setUserData(student);
       setAuthChecking(false);
@@ -83,7 +83,7 @@ export default function StudentDashboard() {
       
       if (userRole === 'student') {
         // User is authenticated with Clerk as a student
-        console.log('✅ Valid student role, creating user object');
+        console.log('Valid student role, creating user object');
         const student = {
           id: user.id,
           email: user.emailAddresses[0]?.emailAddress || '',
@@ -94,7 +94,7 @@ export default function StudentDashboard() {
         };
         console.log('📝 Setting user data:', student);
         setUserData(student);
-        console.log('✅ Setting authChecking to false');
+        console.log('Setting authChecking to false');
         setAuthChecking(false);
         console.log('📊 Fetching attendance...');
         fetchAttendance(student.id);
@@ -116,7 +116,7 @@ export default function StudentDashboard() {
   const fetchAttendance = async (studentId: string) => {
     try {
       setLoading(true);
-      console.log('🔍 Fetching attendance for student:', studentId);
+      console.log('Fetching attendance for student:', studentId);
       
       const headers = {
         'x-student-id': studentId.toString(),
@@ -128,7 +128,7 @@ export default function StudentDashboard() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Attendance data received:', data);
+        console.log('Attendance data received:', data);
         setAttendanceRecords(data.records || []);
         setAttendanceStats(data.statistics || {
           totalDays: 0,
@@ -221,7 +221,7 @@ export default function StudentDashboard() {
     );
   }
 
-  console.log('✅ Rendering dashboard content for:', userData.name);
+  console.log('Rendering dashboard content for:', userData.name);
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -399,18 +399,21 @@ export default function StudentDashboard() {
                       Date
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Day
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Marked By
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Time
+                      Marked At
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
-                  {attendanceRecords.slice(0, 5).map((record, index) => (
+                  {attendanceRecords
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .slice(0, 5)
+                    .map((record, index) => (
                     <tr key={record.id} className="hover:bg-blue-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -427,40 +430,40 @@ export default function StudentDashboard() {
                                 year: 'numeric',
                               })}
                             </p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(record.date).toLocaleDateString('en-US', {
-                                weekday: 'long',
-                              })}
-                            </p>
                           </div>
                         </div>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {new Date(record.date).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                        })}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-4 py-2 inline-flex items-center text-xs font-bold rounded-full ${
+                        <span className={`px-4 py-2 inline-flex text-xs font-bold rounded-full ${
                           record.status === 'present'
                             ? 'bg-green-100 text-green-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {record.status === 'present' ? (
-                            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : (
-                            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          )}
                           {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
-                        {record.teacherName}
-                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(record.markedAt).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900">
+                            {new Date(record.markedAt).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              hour12: true
+                            })}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {new Date(record.markedAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   ))}

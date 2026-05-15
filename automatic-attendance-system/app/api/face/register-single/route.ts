@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getDatabase } from '@/lib/mongodb';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // Store single image at a time to avoid SSL timeout
 export async function POST(request: NextRequest) {
   try {
-    console.log('📸 Single image upload');
+    console.log('Single image upload');
     
     const body = await request.json();
     const { studentId, studentName, studentEmail, image, imageIndex, totalImages } = body;
@@ -20,8 +20,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
 
     // Find or create temp registration
     let tempReg = await db.collection('face_registrations_temp').findOne({

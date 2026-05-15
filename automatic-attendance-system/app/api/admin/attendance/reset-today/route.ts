@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import clientPromise from '@/lib/mongodb';
+import { getDatabase } from '@/lib/mongodb';
 
 export async function DELETE() {
   try {
@@ -18,8 +18,11 @@ export async function DELETE() {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
     }
 
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    }
 
     // Get today's date at midnight
     const today = new Date();

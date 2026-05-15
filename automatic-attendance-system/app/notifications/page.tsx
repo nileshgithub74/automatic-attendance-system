@@ -77,7 +77,7 @@ export default function Notifications() {
                   </svg>
                   <div className="flex-1">
                     <p className="text-green-800 font-medium">
-                      ✅ Notification sent to parent of <span className="font-bold">{notification.studentName}</span> confirming attendance.
+                      Notification sent to parent of <span className="font-bold">{notification.studentName}</span> confirming attendance.
                     </p>
                     <div className="mt-2 text-sm text-green-700">
                       <p>Parent: {notification.parentNumber || 'N/A'}</p>

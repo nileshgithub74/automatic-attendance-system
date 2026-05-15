@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getDatabase } from '@/lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
 
 export const dynamic = 'force-dynamic';
@@ -15,8 +15,11 @@ export async function GET(request: NextRequest) {
 
     console.log('🔐 Auth:', { clerkUserId, customUserId, userRole });
 
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    }
 
     // Fetch all students
     const students = await db

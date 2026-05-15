@@ -9,6 +9,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/notify",
   "/api/auth/login",
   "/api/auth/logout",
+  "/api/ai(.*)",
   "/unauthorized",
   "/debug-student",
   "/test-auth",
@@ -23,7 +24,7 @@ function roleBasedProtection(request: NextRequest) {
   const userRole = request.cookies.get('userRole')?.value;
   const userId = request.cookies.get('userId')?.value;
 
-  console.log('🔍 Middleware check:', { pathname, userRole, userId: !!userId });
+  console.log('Middleware check:', { pathname, userRole, userId: !!userId });
 
   // Protected routes
   const studentRoutes = ['/dashboard/student', '/student/attendance', '/student/mark-attendance', '/attendance-history'];
@@ -37,13 +38,13 @@ function roleBasedProtection(request: NextRequest) {
 
   // If not logged in and trying to access protected route
   if ((isStudentRoute || isTeacherRoute || isParentRoute) && !userId) {
-    console.log('❌ No userId cookie, redirecting to sign-in');
+    console.log('No userId cookie, redirecting to sign-in');
     return NextResponse.redirect(new URL('/sign-in', request.url));
   }
 
   // Role-based access control
   if (isStudentRoute && userRole !== 'student') {
-    console.log('❌ Student route access denied:', { userRole, expected: 'student' });
+    console.log('Student route access denied:', { userRole, expected: 'student' });
     return NextResponse.redirect(new URL('/unauthorized', request.url));
   }
 
@@ -82,12 +83,12 @@ export default clerkMiddleware(async (auth, req) => {
     
     // If user is authenticated with Clerk OR has custom auth, allow access
     if (userId || hasCustomAuth) {
-      console.log('✅ Middleware: Access granted', { clerkUserId: !!userId, customAuth: !!hasCustomAuth });
+      console.log('Middleware: Access granted', { clerkUserId: !!userId, customAuth: !!hasCustomAuth });
       return NextResponse.next();
     }
     
     // No authentication found, redirect to sign-in
-    console.log('❌ Middleware: No authentication, redirecting to sign-in');
+    console.log('Middleware: No authentication, redirecting to sign-in');
     return NextResponse.redirect(new URL('/sign-in', req.url));
   }
 

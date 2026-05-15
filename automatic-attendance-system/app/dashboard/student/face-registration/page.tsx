@@ -19,20 +19,40 @@ export default function FaceRegistrationPage() {
   const [hasExistingRegistration, setHasExistingRegistration] = useState(false);
   const [loading, setLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking');
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const REQUIRED_IMAGES = 5;
+
+  // Get location on component mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+          console.log('📍 Location obtained:', position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.warn('⚠️ Location error:', error);
+          // Don't block registration if location fails
+        }
+      );
+    }
+  }, []);
 
   useEffect(() => {
     if (!isLoaded) return;
 
-    console.log('🔍 Face Registration - Checking authentication...');
+    console.log('Face Registration - Checking authentication...');
 
     // Check for custom login
     const role = localStorage.getItem('userRole');
     const studentData = localStorage.getItem('studentData');
 
     if (studentData && role?.toLowerCase() === 'student') {
-      console.log('✅ Custom login detected');
+      console.log('Custom login detected');
       const student = JSON.parse(studentData);
       const ids = getStudentIds(student.id);
       console.log('📝 Student data:', { 
@@ -56,7 +76,7 @@ export default function FaceRegistrationPage() {
     // Check for Clerk authentication
     if (user) {
       const userRole = (user.publicMetadata?.role as string)?.toLowerCase();
-      console.log('✅ Clerk user detected, role:', userRole);
+      console.log('Clerk user detected, role:', userRole);
       
       if (userRole === 'student') {
         const ids = getStudentIds(user.id);
@@ -91,8 +111,8 @@ export default function FaceRegistrationPage() {
 
   const checkExistingRegistration = async (studentId: string) => {
     try {
-      console.log('🔍 Checking face registration for student:', studentId);
-      const url = `/api/face/register?studentId=${encodeURIComponent(studentId)}`;
+      console.log('Checking face registration for student:', studentId);
+      const url = `/api/student/face-registration?studentId=${encodeURIComponent(studentId)}`;
       console.log('📤 Fetching:', url);
       
       const controller = new AbortController();
@@ -112,7 +132,7 @@ export default function FaceRegistrationPage() {
       console.log('📥 Response ok:', response.ok);
       
       const data = await response.json();
-      console.log('✅ Registration check data:', data);
+      console.log('Registration check data:', data);
       
       // Accept both success and failure responses
       if (data.success !== false) {
@@ -192,9 +212,10 @@ export default function FaceRegistrationPage() {
         studentName: userData.name,
         studentEmail: userData.email,
         images: capturedImages,
+        location: location || undefined, // Include location if available
       };
       
-      const response = await fetch('/api/face/register', {
+      const response = await fetch('/api/student/face-registration', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -262,7 +283,7 @@ export default function FaceRegistrationPage() {
           id: progressToast
         });
         
-        const response = await fetch('/api/face/register-single', {
+        const response = await fetch('/api/student/face-registration', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -270,10 +291,8 @@ export default function FaceRegistrationPage() {
           body: JSON.stringify({
             studentId: userData.id,
             studentName: userData.name,
-            studentEmail: userData.email,
-            image: capturedImages[i],
-            imageIndex: i,
-            totalImages: capturedImages.length
+            images: [capturedImages[i]], // Send one image at a time
+            location: location || undefined, // Include location
           }),
         });
 
@@ -283,7 +302,7 @@ export default function FaceRegistrationPage() {
           throw new Error(data.message || `Failed to upload image ${i + 1}`);
         }
         
-        console.log(`✅ Image ${i + 1}/${capturedImages.length} uploaded`);
+        console.log(`Image ${i + 1}/${capturedImages.length} uploaded`);
       }
       
       toast.dismiss(progressToast);

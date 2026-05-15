@@ -1,255 +1,244 @@
-// Face Registration API - Updated
 import { NextRequest, NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
-import { auth } from '@clerk/nextjs/server';
-import { getStudentIds } from '@/lib/idConverter';
-
-export const runtime = 'nodejs';
-export const maxDuration = 60;
-export const dynamic = 'force-dynamic';
+import { getDatabase } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
+import { extractEmbedding } from '@/lib/aiService';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('📸 Face registration API called');
+    const formData = await request.formData();
+    const studentId = formData.get('studentId') as string;
+    const images = formData.getAll('images') as File[];
 
-    // Get authentication
-    const { userId: clerkUserId } = await auth();
-    const customUserId = request.cookies.get('userId')?.value;
-    const userRole = request.cookies.get('userRole')?.value;
+    if (!studentId || images.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Missing studentId or images' },
+        { status: 400 }
+      );
+    }
 
-    console.log('🔐 Auth check:', { clerkUserId, customUserId, userRole });
+    if (images.length < 3) {
+      return NextResponse.json(
+        { success: false, error: 'At least 3 images required' },
+        { status: 400 }
+      );
+    }
 
-    // Parse the JSON body (not FormData, we're using base64)
-    const body = await request.json();
-    const { studentId, numericId, clerkId, studentName, studentEmail, images } = body;
+    const db = await getDatabase();
+    if (!db) {
+      return NextResponse.json(
+        { success: false, error: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
 
-    // Get both ID formats
-    const ids = getStudentIds(studentId);
-
-    console.log('📝 Request data:', {
-      studentId,
-      numericId: numericId || ids.numericId,
-      clerkId,
-      studentName,
-      studentEmail,
-      imageCount: images?.length,
+    // Get student info
+    const student = await db.collection('users').findOne({
+      _id: new ObjectId(studentId)
     });
 
-    // Validation
-    if (!studentId) {
+    if (!student) {
       return NextResponse.json(
-        { success: false, message: 'Student ID is required' },
-        { status: 400 }
+        { success: false, error: 'Student not found' },
+        { status: 404 }
       );
     }
 
-    if (!images || !Array.isArray(images) || images.length !== 5) {
-      return NextResponse.json(
-        { success: false, message: 'Exactly 5 images are required' },
-        { status: 400 }
-      );
-    }
+    // Process each image and extract embeddings
+    const embeddings = [];
+    let totalQuality = 0;
 
-    // Validate image format
     for (let i = 0; i < images.length; i++) {
-      if (!images[i].startsWith('data:image/')) {
-        return NextResponse.json(
-          { success: false, message: `Image ${i + 1} has invalid format` },
-          { status: 400 }
-        );
+      const image = images[i];
+      
+      // Convert image to base64
+      const buffer = await image.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString('base64');
+      const imageBase64 = `data:${image.type};base64,${base64}`;
+
+      try {
+        // Extract embedding using AI service
+        const result = await extractEmbedding(imageBase64);
+
+        if (result.faceDetected && result.embedding.length > 0) {
+          embeddings.push({
+            embedding: result.embedding,
+            imageUrl: null, // Store in cloud storage if needed
+            captureDate: new Date(),
+            quality: result.quality,
+            model: 'FaceNet'
+          });
+          totalQuality += result.quality;
+        } else {
+          console.warn(`No face detected in image ${i + 1}`);
+        }
+      } catch (error) {
+        console.error(`Error processing image ${i + 1}:`, error);
       }
     }
 
-    console.log('✅ Validation passed, connecting to database...');
-
-    // Add timeout for MongoDB connection
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('MongoDB connection timeout')), 8000)
-    );
-    
-    const dbPromise = clientPromise.then(client => client.db('attendance_system'));
-    const db = await Promise.race([dbPromise, timeoutPromise]) as any;
-
-    // Check if student exists - simplified query for better performance
-    let student = null;
-    
-    // Try queries in order of likelihood
-    if (clerkId) {
-      student = await db.collection('users').findOne({ clerkId: clerkId });
-    }
-    
-    if (!student && studentEmail) {
-      student = await db.collection('users').findOne({ email: studentEmail });
-    }
-    
-    if (!student && numericId) {
-      student = await db.collection('users').findOne({ id: numericId });
-    }
-    
-    if (!student) {
-      student = await db.collection('users').findOne({ clerkId: studentId });
+    if (embeddings.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'No faces detected in any image' },
+        { status: 400 }
+      );
     }
 
-    // If not found, create a basic student record
-    if (!student) {
-      console.log('⚠️ Student not found in users collection, creating basic record...');
-      const newStudent = {
-        clerkId: clerkId || studentId,
-        id: numericId || ids.numericId,
-        name: studentName,
-        email: studentEmail,
-        role: 'student',
-        faceRegistered: false,
-        createdAt: new Date(),
-      };
-      
-      const insertResult = await db.collection('users').insertOne(newStudent);
-      student = { ...newStudent, _id: insertResult.insertedId };
-      console.log('✅ Student record created:', student.name);
-    } else {
-      console.log('✅ Student found:', student.name || student.email);
+    // Calculate average embedding
+    const embeddingLength = embeddings[0].embedding.length;
+    const averageEmbedding = new Array(embeddingLength).fill(0);
+
+    for (const emb of embeddings) {
+      for (let i = 0; i < embeddingLength; i++) {
+        averageEmbedding[i] += emb.embedding[i];
+      }
     }
 
-    // Check if face registration already exists
-    const existingRegistration = await db.collection('face_registrations').findOne({
-      studentId: student._id.toString()
-    });
+    for (let i = 0; i < embeddingLength; i++) {
+      averageEmbedding[i] /= embeddings.length;
+    }
 
-    const registrationData = {
-      studentId: student._id.toString(),
-      numericId: numericId || ids.numericId || student.id,
-      clerkId: clerkId || student.clerkId || studentId,
-      studentName: student.name || studentName,
-      studentEmail: student.email || studentEmail,
-      images: images,
-      imageCount: images.length,
-      registeredAt: new Date(),
-      updatedAt: new Date(),
-      status: 'active'
+    const averageQuality = totalQuality / embeddings.length;
+
+    // Store in database
+    const faceEmbeddingDoc = {
+      studentId: new ObjectId(studentId),
+      studentName: student.name,
+      studentRollNumber: student.rollNumber || student.email,
+      embeddings,
+      averageEmbedding,
+      totalImages: embeddings.length,
+      lastUpdated: new Date(),
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
-    if (existingRegistration) {
-      console.log('🔄 Updating existing registration...');
-      
-      await db.collection('face_registrations').updateOne(
-        { studentId: student._id.toString() },
-        {
-          $set: {
-            ...registrationData,
-            previousRegistrationDate: existingRegistration.registeredAt
-          }
-        }
-      );
+    // Upsert (update if exists, insert if not)
+    await db.collection('faceEmbeddings').updateOne(
+      { studentId: new ObjectId(studentId) },
+      { $set: faceEmbeddingDoc },
+      { upsert: true }
+    );
 
-      // Update student document
-      await db.collection('users').updateOne(
-        { _id: student._id },
-        { $set: { faceRegistered: true, faceRegisteredAt: new Date() } }
-      );
+    // Update user record
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(studentId) },
+      { 
+        $set: { 
+          faceRegistered: true,
+          faceRegisteredAt: new Date()
+        } 
+      }
+    );
 
-      console.log('✅ Registration updated successfully');
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Face registration updated successfully',
-        isUpdate: true
-      });
-    } else {
-      console.log('➕ Creating new registration...');
-      
-      await db.collection('face_registrations').insertOne(registrationData);
+    return NextResponse.json({
+      success: true,
+      embeddingsCreated: embeddings.length,
+      averageQuality: Math.round(averageQuality * 100) / 100,
+      message: 'Face registered successfully'
+    });
 
-      // Update student document
-      await db.collection('users').updateOne(
-        { _id: student._id },
-        { $set: { faceRegistered: true, faceRegisteredAt: new Date() } }
-      );
-
-      console.log('✅ Registration created successfully');
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Face registration completed successfully',
-        isUpdate: false
-      });
-    }
   } catch (error: any) {
-    console.error('❌ Error in face registration:', error);
-    console.error('Error stack:', error.stack);
-    
+    console.error('Face registration error:', error);
     return NextResponse.json(
-      {
-        success: false,
-        message: error.message || 'Failed to register face data',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-      },
+      { success: false, error: error.message },
       { status: 500 }
     );
   }
 }
 
-// GET - Check registration status
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 GET /api/face/register - Check registration status');
-    
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get('studentId');
-    
-    console.log('📝 Student ID:', studentId);
 
     if (!studentId) {
-      console.log('❌ No student ID provided');
       return NextResponse.json(
-        { success: false, message: 'Student ID is required' },
+        { success: false, error: 'Missing studentId' },
         { status: 400 }
       );
     }
 
-    console.log('🔌 Connecting to MongoDB...');
-    
-    // Add timeout for MongoDB connection
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('MongoDB connection timeout')), 8000)
-    );
-    
-    const dbPromise = clientPromise.then(client => client.db('attendance_system'));
-    
-    const db = await Promise.race([dbPromise, timeoutPromise]) as any;
-    console.log('✅ MongoDB connected');
+    const db = await getDatabase();
+    if (!db) {
+      return NextResponse.json(
+        { success: false, error: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
 
-    console.log('🔍 Searching for registration...');
-    
-    // Try multiple query formats for better compatibility
-    const registration = await db.collection('face_registrations').findOne({
-      $or: [
-        { studentId: studentId },
-        { clerkId: studentId },
-        { numericId: parseInt(studentId) || studentId }
-      ]
+    const faceData = await db.collection('faceEmbeddings').findOne({
+      studentId: new ObjectId(studentId)
     });
-    
-    console.log('📊 Registration found:', !!registration);
+
+    if (!faceData) {
+      return NextResponse.json(
+        { success: false, error: 'Face not registered' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      hasRegistration: !!registration,
-      registrationDate: registration?.registeredAt || null
+      studentId: faceData.studentId,
+      totalEmbeddings: faceData.totalImages,
+      isActive: faceData.isActive,
+      lastUpdated: faceData.lastUpdated
     });
+
   } catch (error: any) {
-    console.error('❌ Error checking registration:', error);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error stack:', error.stack);
-    
-    // Return success: false but with 200 status to prevent frontend errors
+    console.error('Get face embeddings error:', error);
     return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const studentId = searchParams.get('studentId');
+
+    if (!studentId) {
+      return NextResponse.json(
+        { success: false, error: 'Missing studentId' },
+        { status: 400 }
+      );
+    }
+
+    const db = await getDatabase();
+    if (!db) {
+      return NextResponse.json(
+        { success: false, error: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
+
+    await db.collection('faceEmbeddings').deleteOne({
+      studentId: new ObjectId(studentId)
+    });
+
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(studentId) },
       { 
-        success: false, 
-        hasRegistration: false,
-        message: 'Could not check registration status', 
-        error: error.message 
-      },
-      { status: 200 } // Changed from 500 to 200
+        $set: { 
+          faceRegistered: false,
+          faceRegisteredAt: null
+        } 
+      }
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: 'Face embeddings deleted'
+    });
+
+  } catch (error: any) {
+    console.error('Delete face embeddings error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
     );
   }
 }

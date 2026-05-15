@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getDatabase } from '@/lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
 
 export async function POST(request: NextRequest) {
@@ -34,8 +34,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    }
+    
     const studentsCollection = db.collection('students');
 
     // Check if student exists
@@ -94,8 +98,12 @@ export async function GET(request: NextRequest) {
 
     const studentId = (userId || headerStudentId) as string;
     
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    }
+    
     const studentsCollection = db.collection('students');
 
     const student = await studentsCollection.findOne({

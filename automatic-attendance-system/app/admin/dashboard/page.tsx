@@ -61,6 +61,8 @@ export default function AdminDashboard() {
     teacherMarkedToday: 0,
     totalRecords: 0
   });
+  const [selectedRecord, setSelectedRecord] = useState<any>(null);
+  const [showRecordDetails, setShowRecordDetails] = useState(false);
   const [faceRegistrations, setFaceRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
@@ -104,7 +106,7 @@ export default function AdminDashboard() {
     const checkDayChange = setInterval(() => {
       const newDate = new Date().toDateString();
       if (newDate !== currentDate) {
-        console.log('📅 Day changed! Refreshing admin dashboard...');
+        console.log('Day changed! Refreshing admin dashboard...');
         setCurrentDate(newDate);
         if (user) {
           fetchAllData();
@@ -129,7 +131,7 @@ export default function AdminDashboard() {
     }
     
     if (user) {
-      console.log('✅ User authenticated, fetching data...');
+      console.log('User authenticated, fetching data...');
       fetchAllData();
       const interval = setInterval(() => {
         fetchAllData();
@@ -152,7 +154,7 @@ export default function AdminDashboard() {
   }, [activeTab]);
 
   const fetchAllData = async () => {
-    console.log('🔄 Fetching admin dashboard data...');
+    console.log('Fetching admin dashboard data...');
     try {
       const [studentsRes, teachersRes, classesRes, notificationsRes, pendingUsersRes] =
         await Promise.all([
@@ -163,7 +165,7 @@ export default function AdminDashboard() {
           fetch("/api/admin/pending-users"),
         ]);
 
-      console.log('📊 API Response Status:', {
+      console.log('API Response Status:', {
         students: studentsRes.status,
         teachers: teachersRes.status,
         classes: classesRes.status,
@@ -187,7 +189,7 @@ export default function AdminDashboard() {
           pendingUsersRes.json(),
         ]);
 
-      console.log('✅ Data fetched successfully:', {
+      console.log('Data fetched successfully:', {
         students: studentsData?.length || 0,
         teachers: teachersData?.length || 0,
         classes: classesData?.length || 0,
@@ -214,7 +216,7 @@ export default function AdminDashboard() {
       setNotifications({ totalToday: 0 });
       setPendingUsers([]);
     } finally {
-      console.log('✅ Setting loading to false');
+      console.log('Setting loading to false');
       setLoading(false);
     }
   };
@@ -557,11 +559,11 @@ export default function AdminDashboard() {
   });
 
   const handleExportCSV = () => {
-    // CSV export logic
+    // CSV export logic - only export safe, non-sensitive information
     const csvContent = [
-      ["Student ID", "Name", "Class", "Attendance %"].join(","),
+      ["Roll Number", "Name", "Class", "Attendance %"].join(","),
       ...filteredStudents.map((s) =>
-        [s.id, s.name, s.class, s.attendancePercent].join(",")
+        [s.rollNo || 'N/A', s.name, s.class, s.attendancePercent].join(",")
       ),
     ].join("\n");
 
@@ -617,22 +619,22 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Enhanced Header */}
         <div className="mb-8">
-          <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl shadow-xl p-8 text-white">
+          <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-900 rounded-2xl shadow-2xl p-8 text-white border border-slate-600">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-4xl font-bold mb-2">
-                  Welcome, Admin! 👨‍💼
+                <h1 className="text-4xl font-bold mb-2 tracking-tight">
+                  Admin Dashboard
                 </h1>
-                <p className="text-indigo-100 text-lg">Manage your school's attendance system</p>
+                <p className="text-slate-300 text-lg">Comprehensive School Attendance Management System</p>
               </div>
               <div className="hidden md:flex items-center gap-4">
-                <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                  <p className="text-xs text-indigo-100">Total Users</p>
-                  <p className="text-2xl font-bold">{students.length + teachers.length}</p>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl px-6 py-3 border border-white/20">
+                  <p className="text-xs text-slate-300 uppercase tracking-wide mb-1">Total Users</p>
+                  <p className="text-3xl font-bold">{students.length + teachers.length}</p>
                 </div>
-                <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                  <p className="text-xs text-indigo-100">Active Today</p>
-                  <p className="text-2xl font-bold">{notifications.totalToday}</p>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl px-6 py-3 border border-white/20">
+                  <p className="text-xs text-slate-300 uppercase tracking-wide mb-1">Active Today</p>
+                  <p className="text-3xl font-bold">{notifications.totalToday}</p>
                 </div>
               </div>
             </div>
@@ -748,6 +750,22 @@ export default function AdminDashboard() {
             </div>
           </Link>
 
+          <Link
+            href="/admin/verification-monitor"
+            className="bg-white rounded-xl shadow-md p-4 hover:shadow-xl transition-all transform hover:scale-105 border-l-4 border-pink-500 text-left"
+          >
+            <div className="flex items-center">
+              <div className="bg-pink-100 rounded-lg p-3 mr-3">
+                <svg className="w-6 h-6 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">AI Monitor</p>
+                <p className="text-xs text-gray-500">Location & VPN</p>
+              </div>
+            </div>
+          </Link>
           <button
             onClick={() => setShowCreateUserForm(true)}
             className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-md p-4 hover:shadow-xl transition-all transform hover:scale-105 text-white"
@@ -872,55 +890,6 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div 
-            className="bg-white rounded-xl shadow-lg p-6 cursor-pointer hover:shadow-2xl transition-all transform hover:scale-105 border-l-4 border-pink-500"
-            onClick={() => scrollToTabs("classes")}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl p-4 shadow-lg">
-                <svg
-                  className="h-6 w-6 text-pink-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Notifications Today</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  {notifications.totalToday}
-                </p>
-              </div>
-              <div className="bg-green-100 rounded-full p-3">
-                <svg
-                  className="h-6 w-6 text-green-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.21 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-
           <div
             className="bg-white rounded-xl shadow-lg p-6 cursor-pointer hover:shadow-2xl transition-all transform hover:scale-105 border-l-4 border-orange-500"
             onClick={() => router.push('/admin/register-face')}
@@ -944,15 +913,12 @@ export default function AdminDashboard() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600 mb-1">Face Registration</p>
-              <p className="text-4xl font-bold text-gray-900 mb-3">
-                {students.filter(s => s.faceRegistered).length}/{students.length}
-              </p>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   router.push('/admin/register-face');
                 }}
-                className="text-xs text-orange-600 hover:text-orange-800 font-semibold flex items-center"
+                className="text-sm text-orange-600 hover:text-orange-800 font-semibold flex items-center mt-2"
               >
                 <svg
                   className="w-4 h-4 mr-1"
@@ -1605,7 +1571,7 @@ export default function AdminDashboard() {
                       </button>
                       <button
                         onClick={async () => {
-                          if (!confirm('Are you sure you want to reset today\'s attendance? This will delete all attendance records for today.')) {
+                          if (!confirm('Are you sure you want to delete today\'s attendance? This will permanently remove all attendance records for today and cannot be undone.')) {
                             return;
                           }
                           try {
@@ -1615,7 +1581,7 @@ export default function AdminDashboard() {
                             if (response.ok) {
                               setSuccessPopup({
                                 show: true,
-                                message: 'Today\'s attendance has been reset successfully!',
+                                message: 'Today\'s attendance has been deleted successfully!',
                               });
                               fetchFaceAttendance();
                               setTimeout(() => setSuccessPopup({ show: false, message: '' }), 3000);
@@ -1623,11 +1589,11 @@ export default function AdminDashboard() {
                               const data = await response.json();
                               setErrorPopup({
                                 show: true,
-                                message: data.error || 'Failed to reset attendance',
+                                message: data.error || 'Failed to delete attendance',
                               });
                             }
                           } catch (error) {
-                            console.error('Error resetting attendance:', error);
+                            console.error('Error deleting attendance:', error);
                             setErrorPopup({
                               show: true,
                               message: 'Network error. Please try again.',
@@ -1636,7 +1602,7 @@ export default function AdminDashboard() {
                         }}
                         className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
                       >
-                        Reset Today's Attendance
+                        Delete Today's Attendance
                       </button>
                     </div>
                   </div>
@@ -1725,7 +1691,7 @@ export default function AdminDashboard() {
                                   ? 'bg-green-100 text-green-800'
                                   : 'bg-red-100 text-red-800'
                               }`}>
-                                {record.status === 'present' ? '✓ Present' : '✗ Absent'}
+                                {record.status === 'present' ? 'Present' : 'Absent'}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -1734,7 +1700,7 @@ export default function AdminDashboard() {
                                   ? 'bg-blue-100 text-blue-800'
                                   : 'bg-purple-100 text-purple-800'
                               }`}>
-                                {record.method === 'face_recognition' ? '📸 Face' : '👨‍🏫 Teacher'}
+                                {record.method === 'face_recognition' ? 'Face Recognition' : 'Manual Entry'}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1756,7 +1722,7 @@ export default function AdminDashboard() {
                                         method: 'PATCH',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({
-                                          recordId: record.id,
+                                          recordId: record._id || record.id,
                                           status: newStatus,
                                         }),
                                       });

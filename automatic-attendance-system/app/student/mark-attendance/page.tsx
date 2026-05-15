@@ -14,6 +14,12 @@ export default function MarkAttendancePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [showAlreadyMarkedModal, setShowAlreadyMarkedModal] = useState(false);
+  const [locationGranted, setLocationGranted] = useState(false);
+  const [locationData, setLocationData] = useState<any>(null);
+  const [recognitionResult, setRecognitionResult] = useState<any>(null);
+  const [isRecognizing, setIsRecognizing] = useState(false);
+  const [showStudentDetails, setShowStudentDetails] = useState(false);
+  const [detailsTimer, setDetailsTimer] = useState<number>(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -55,10 +61,43 @@ export default function MarkAttendancePage() {
     // No authentication found - don't redirect, let page show message
   }, [router, user, isLoaded]);
 
+  const requestLocation = async () => {
+    try {
+      setMessage({ type: 'info', text: 'Requesting location access...' });
+      
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
+      });
+      
+      const location = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        platform: navigator.platform
+      };
+      
+      setLocationData(location);
+      setLocationGranted(true);
+      setMessage({ type: 'success', text: 'Location access granted! Now you can start the camera.' });
+    } catch (error) {
+      console.error('Location error:', error);
+      setMessage({ type: 'error', text: 'Location access is required to mark attendance. Please allow location permissions.' });
+    }
+  };
+
   const startCamera = async () => {
+    if (!locationGranted) {
+      setMessage({ type: 'error', text: 'Please grant location access first.' });
+      return;
+    }
+
     try {
       setMessage({ type: 'info', text: 'Starting camera...' });
-      setIsCapturing(true); // Show the video container immediately
+      setIsCapturing(true);
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
@@ -71,10 +110,11 @@ export default function MarkAttendancePage() {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         
-        // Ensure video plays
         videoRef.current.onloadedmetadata = () => {
           videoRef.current?.play().then(() => {
             setMessage({ type: 'success', text: 'Camera started! Position your face in the frame.' });
+            // Start real-time face recognition
+            startRealTimeFaceRecognition();
           }).catch(err => {
             console.error('Play error:', err);
             setMessage({ type: 'error', text: 'Failed to play video stream.' });
@@ -84,7 +124,7 @@ export default function MarkAttendancePage() {
     } catch (error) {
       console.error('Error accessing camera:', error);
       setMessage({ type: 'error', text: 'Failed to access camera. Please allow camera permissions.' });
-      setIsCapturing(false); // Hide video container on error
+      setIsCapturing(false);
     }
   };
 
@@ -97,6 +137,179 @@ export default function MarkAttendancePage() {
       videoRef.current.srcObject = null;
     }
     setIsCapturing(false);
+    setRecognitionResult(null);
+    setShowStudentDetails(false);
+    setDetailsTimer(0);
+  };
+
+  const startRealTimeFaceRecognition = () => {
+    // Start continuous face recognition every 2 seconds
+    const recognitionInterval = setInterval(() => {
+      if (videoRef.current && !isRecognizing && !capturedImage) {
+        performFaceRecognition();
+      }
+    }, 2000);
+
+    // Store interval reference to clear it later
+    (window as any).recognitionInterval = recognitionInterval;
+  };
+
+  const performFaceRecognition = async () => {
+    if (!videoRef.current || isRecognizing) return;
+
+    setIsRecognizing(true);
+    
+    try {
+      // Capture current frame for recognition
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.drawImage(videoRef.current, 0, 0);
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Send to face recognition API
+        const response = await fetch('/api/face-recognition/identify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ faceImage: imageData }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          setRecognitionResult(result);
+          
+          if (result.recognized) {
+            // Show student details for 5 seconds
+            setShowStudentDetails(true);
+            setMessage({ 
+              type: 'success', 
+              text: `Face recognized! Hello ${result.student.name}!` 
+            });
+            
+            // Wait 5 seconds then mark attendance
+            setTimeout(() => {
+              setShowStudentDetails(false);
+              autoMarkAttendance(result.student);
+            }, 5000);
+            
+          } else {
+            setMessage({ 
+              type: 'error', 
+              text: 'Face not found - Please position your face properly in the frame' 
+            });
+            
+            // Show error for 3 seconds then continue recognition
+            setTimeout(() => {
+              setRecognitionResult(null);
+            }, 3000);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Face recognition error:', error);
+      setMessage({ 
+        type: 'error', 
+        text: 'Face recognition failed. Please try again.' 
+      });
+    } finally {
+      setIsRecognizing(false);
+    }
+  };
+
+  const autoMarkAttendance = async (student: any) => {
+    try {
+      // Stop camera and recognition
+      stopCamera();
+      if ((window as any).recognitionInterval) {
+        clearInterval((window as any).recognitionInterval);
+      }
+
+      // Show processing message
+      setMessage({ 
+        type: 'info', 
+        text: `Marking attendance for ${student.name}...` 
+      });
+
+      // Get network information
+      const networkInfo: any = {};
+      
+      // Get connection type
+      const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+      if (connection) {
+        networkInfo.connectionType = connection.effectiveType || connection.type || 'Unknown';
+        networkInfo.downlink = connection.downlink;
+        networkInfo.rtt = connection.rtt;
+      }
+
+      // Measure latency
+      const startTime = performance.now();
+      try {
+        await fetch('/api/hello', { method: 'HEAD' });
+        const endTime = performance.now();
+        networkInfo.latency = Math.round(endTime - startTime);
+      } catch (error) {
+        networkInfo.latency = 0;
+      }
+
+      // Submit attendance automatically
+      const response = await fetch('/api/student/mark-attendance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          studentId: student.id,
+          studentName: student.name,
+          class: student.class,
+          rollNo: student.rollNo,
+          faceImage: null, // No need to store image for auto-recognition
+          location: locationData,
+          networkInfo,
+          method: 'auto_face_recognition'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage({ 
+          type: 'success', 
+          text: `✅ Attendance marked successfully! Welcome ${student.name}!`
+        });
+        
+        // Redirect to dashboard after 2 seconds
+        setTimeout(() => {
+          router.push('/dashboard/student');
+        }, 2000);
+      } else {
+        // Check if attendance already marked
+        if (data.error && data.error.includes('already marked')) {
+          setMessage({ 
+            type: 'info', 
+            text: `${student.name}, your attendance is already marked for today!`
+          });
+          
+          // Still redirect to dashboard
+          setTimeout(() => {
+            router.push('/dashboard/student');
+          }, 2000);
+        } else {
+          setMessage({ 
+            type: 'error', 
+            text: data.error || 'Failed to mark attendance. Please try again.' 
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error in auto mark attendance:', error);
+      setMessage({ 
+        type: 'error', 
+        text: 'Network error. Please check your connection and try again.' 
+      });
+    }
   };
 
   const captureImage = () => {
@@ -131,6 +344,47 @@ export default function MarkAttendancePage() {
     setMessage({ type: 'info', text: 'Processing your attendance...' });
 
     try {
+      // Use the location data we already have
+      const location = locationData;
+
+      // Get network information
+      const networkInfo: any = {};
+      
+      // Get connection type
+      const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+      if (connection) {
+        networkInfo.connectionType = connection.effectiveType || connection.type || 'Unknown';
+        networkInfo.downlink = connection.downlink;
+        networkInfo.rtt = connection.rtt; // Round-trip time (latency)
+      }
+
+      // Measure latency
+      const startTime = performance.now();
+      try {
+        await fetch('/api/hello', { method: 'HEAD' });
+        const endTime = performance.now();
+        networkInfo.latency = Math.round(endTime - startTime);
+      } catch (error) {
+        networkInfo.latency = 0;
+      }
+
+      // Calculate jitter (variation in latency)
+      const latencies = [];
+      for (let i = 0; i < 3; i++) {
+        const start = performance.now();
+        try {
+          await fetch('/api/hello', { method: 'HEAD' });
+          latencies.push(performance.now() - start);
+        } catch (error) {
+          // Ignore errors
+        }
+      }
+      if (latencies.length > 1) {
+        const avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
+        const variance = latencies.reduce((sum, lat) => sum + Math.pow(lat - avgLatency, 2), 0) / latencies.length;
+        networkInfo.jitter = Math.round(Math.sqrt(variance));
+      }
+
       const response = await fetch('/api/student/mark-attendance', {
         method: 'POST',
         headers: {
@@ -142,17 +396,22 @@ export default function MarkAttendancePage() {
           class: userData.class,
           rollNo: userData.rollNo,
           faceImage: capturedImage,
+          location,
+          networkInfo
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setMessage({ type: 'success', text: data.message || 'Attendance marked successfully!' });
+        setMessage({ 
+          type: 'success', 
+          text: data.message || 'Attendance marked as PRESENT! Your teacher will verify your actual presence using AI camera verification.'
+        });
         setCapturedImage(null);
         setTimeout(() => {
           router.push('/dashboard/student');
-        }, 2000);
+        }, 3000);
       } else {
         // Check if attendance already marked
         if (data.error && data.error.includes('already marked')) {
@@ -189,6 +448,13 @@ export default function MarkAttendancePage() {
   useEffect(() => {
     return () => {
       stopCamera();
+      // Clear recognition interval
+      if ((window as any).recognitionInterval) {
+        clearInterval((window as any).recognitionInterval);
+      }
+      // Clear any countdown timers
+      setShowStudentDetails(false);
+      setDetailsTimer(0);
     };
   }, []);
 
@@ -222,13 +488,13 @@ export default function MarkAttendancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Mark Attendance</h1>
-              <p className="text-gray-600 mt-1">Use face recognition to mark your attendance</p>
+              <p className="text-gray-600 mt-1">Capture your photo to mark attendance</p>
               <p className="text-sm text-gray-500">Student: {userData.name} | Class: {userData.class} | Roll No: {userData.rollNo}</p>
             </div>
             <div>
@@ -258,34 +524,53 @@ export default function MarkAttendancePage() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="space-y-6">
             <div className="bg-gray-50 rounded-lg p-6 border-2 border-dashed border-gray-300">
               <div className="flex flex-col items-center justify-center">
                 {!isCapturing && !capturedImage && (
                   <div className="text-center">
-                    <svg className="w-24 h-24 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to mark attendance?</h3>
-                    <p className="text-sm text-gray-500 mb-4">Click the button below to start your camera</p>
-                    <button
-                      onClick={startCamera}
-                      className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
-                    >
-                      Start Camera
-                    </button>
+                    {!locationGranted ? (
+                      <>
+                        <svg className="w-24 h-24 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Step 1: Grant Location Access</h3>
+                        <p className="text-sm text-gray-500 mb-4">We need your location to verify attendance</p>
+                        <button
+                          onClick={requestLocation}
+                          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                        >
+                          Allow Location Access
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-24 h-24 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Step 2: Start Camera</h3>
+                        <p className="text-sm text-gray-500 mb-4">Click the button below to start your camera</p>
+                        <button
+                          onClick={startCamera}
+                          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                        >
+                          Start Camera
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
 
                 {isCapturing && (
                   <div className="w-full">
                     <div className="mb-4 text-center">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">📹 Camera Preview</h3>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Camera Preview</h3>
                       <p className="text-sm text-gray-600">Position your face in the center of the frame</p>
                     </div>
-                    <div className="bg-black rounded-xl overflow-hidden mx-auto border-4 border-blue-500 shadow-2xl" style={{ width: '640px', height: '480px', maxWidth: '100%' }}>
+                    <div className="bg-black rounded-xl overflow-hidden mx-auto border-4 border-blue-500 shadow-2xl relative" style={{ width: '640px', height: '480px', maxWidth: '100%' }}>
                       <video
                         ref={videoRef}
                         autoPlay
@@ -299,11 +584,83 @@ export default function MarkAttendancePage() {
                           backgroundColor: '#000'
                         }}
                       />
-                    </div>
-                    <div className="mt-4 text-center">
-                      <div className="inline-flex items-center bg-red-100 text-red-800 px-4 py-2 rounded-full text-sm font-semibold mb-4">
-                        <span className="w-3 h-3 bg-red-600 rounded-full mr-2 animate-pulse"></span>
-                        CAMERA IS LIVE
+                      
+                      {/* Face Recognition Overlay */}
+                      <div className="absolute inset-0 pointer-events-none">
+                        {/* Recognition Status Overlay - Positioned at top center */}
+                        {recognitionResult && (
+                          <div className="absolute top-6 left-6 right-6 z-10">
+                            {recognitionResult.recognized ? (
+                              // Green banner with student info exactly like the image
+                              <div className="bg-green-500 text-white p-4 rounded-xl shadow-2xl border-2 border-green-400">
+                                <div className="flex items-center gap-4">
+                                  {/* Checkmark icon */}
+                                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </div>
+                                  
+                                  {/* Student details */}
+                                  <div className="flex-1">
+                                    <div className="text-2xl font-bold mb-1">{recognitionResult.student.name}</div>
+                                    <div className="text-lg opacity-95">
+                                      Roll: {recognitionResult.student.rollNo} | Class: {recognitionResult.student.class}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {showStudentDetails && (
+                                  <div className="mt-3 text-center text-lg font-medium bg-white bg-opacity-20 rounded-lg py-2">
+                                    Marking attendance automatically...
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              // Red banner for unrecognized face
+                              <div className="bg-red-500 text-white p-4 rounded-xl shadow-2xl border-2 border-red-400">
+                                <div className="flex items-center gap-4">
+                                  {/* X icon */}
+                                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </div>
+                                  
+                                  {/* Error message */}
+                                  <div className="flex-1">
+                                    <div className="text-2xl font-bold mb-1">Face not found</div>
+                                    <div className="text-lg opacity-95">
+                                      Please position your face properly in the frame
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Simple border overlay for recognition feedback */}
+                        {recognitionResult?.recognized && (
+                          <div className="absolute inset-4">
+                            <div className="w-full h-full border-4 border-green-400 rounded-lg shadow-lg shadow-green-400/30"></div>
+                          </div>
+                        )}
+                        
+                        {recognitionResult?.recognized === false && (
+                          <div className="absolute inset-4">
+                            <div className="w-full h-full border-4 border-red-400 rounded-lg shadow-lg shadow-red-400/30"></div>
+                          </div>
+                        )}
+                        
+                        {/* Center recognition status */}
+                        {isRecognizing && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                              Recognizing Face...
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="mt-4 flex gap-3 justify-center">
@@ -350,23 +707,6 @@ export default function MarkAttendancePage() {
                 )}
 
                 <canvas ref={canvasRef} className="hidden" />
-              </div>
-            </div>
-
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-              <div className="flex">
-                <svg className="w-5 h-5 text-blue-500 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <h3 className="text-sm font-medium text-blue-800 mb-1">Tips for best results:</h3>
-                  <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Ensure good lighting on your face</li>
-                    <li>• Look directly at the camera</li>
-                    <li>• Remove glasses or masks if possible</li>
-                    <li>• Keep your face centered in the frame</li>
-                  </ul>
-                </div>
               </div>
             </div>
           </div>

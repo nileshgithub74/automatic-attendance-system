@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getDatabase } from '@/lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
 import { ObjectId } from 'mongodb';
 
@@ -27,10 +27,16 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    console.log('📝 Removing face registration for student:', studentId);
+    console.log('Removing face registration for student:', studentId);
 
-    const client = await clientPromise;
-    const db = client.db('attendance_system');
+    const db = await getDatabase();
+    
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
 
     // Check if student exists
     let student;

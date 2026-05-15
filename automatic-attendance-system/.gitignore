@@ -25,6 +25,7 @@ yarn-error.log*
 # Local env files
 .env
 .env*.local
+.env.production
 
 # Vercel
 .vercel
@@ -32,3 +33,56 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+.tmp/
+temp/
+*.tmp
+
+# MongoDB
+*.mongodb
+
+# Clerk
+.clerk/

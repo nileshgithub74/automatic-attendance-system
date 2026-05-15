@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
     }
 
-    // Get attendance records for this student
+    // Get attendance records for this student - sorted by most recent first
     const attendanceRecords = await db
       .collection('attendance')
       .find({ 
@@ -48,7 +48,10 @@ export async function GET(request: NextRequest) {
           { studentId: studentId }
         ]
       })
-      .sort({ date: -1 })
+      .sort({ 
+        date: -1,      // Most recent date first
+        markedAt: -1   // Most recent time first (for same date)
+      })
       .limit(50) // Last 50 records
       .toArray();
 

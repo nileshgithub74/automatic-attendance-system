@@ -55,7 +55,7 @@ export default function StudentAttendancePage() {
   const fetchAttendance = async (studentId: string) => {
     try {
       setLoading(true);
-      console.log('🔍 Fetching attendance for student:', studentId);
+      console.log('Fetching attendance for student:', studentId);
       
       const headers = {
         'x-student-id': studentId.toString(),
@@ -67,7 +67,7 @@ export default function StudentAttendancePage() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Attendance data received:', data);
+        console.log('Attendance data received:', data);
         setAttendanceRecords(data.records || []);
         setAttendanceStats(data.statistics || {
           totalDays: 0,
@@ -106,10 +106,10 @@ export default function StudentAttendancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">My Attendance</h1>
@@ -141,7 +141,7 @@ export default function StudentAttendancePage() {
 
         {/* Attendance Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="bg-blue-100 rounded-full p-3 mr-4">
                 <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -231,8 +231,7 @@ export default function StudentAttendancePage() {
           </div>
         )}
 
-        {/* Attendance Records Table */}
-        <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-gray-900">Attendance History</h2>
             <div className="text-sm text-gray-500">
@@ -268,15 +267,12 @@ export default function StudentAttendancePage() {
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Marked By
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Time
+                      Marked At
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {attendanceRecords.map((record) => (
+                  {[...attendanceRecords].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((record) => (
                     <tr key={record.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {new Date(record.date).toLocaleDateString('en-US', {
@@ -296,17 +292,26 @@ export default function StudentAttendancePage() {
                             ? 'bg-green-100 text-green-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {record.status === 'present' ? '✓ Present' : '✗ Absent'}
+                          {record.status === 'present' ? 'Present' : 'Absent'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {record.teacherName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(record.markedAt).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900">
+                            {new Date(record.markedAt).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              hour12: true
+                            })}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {new Date(record.markedAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   ))}

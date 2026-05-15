@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
     const user = await currentUser();
     const role = user?.publicMetadata?.role;
 
-    if (role !== 'Principal') {
-      return NextResponse.json({ error: 'Forbidden - Principal access only' }, { status: 403 });
+    if (role !== 'Principal' && role !== 'Admin' && role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden - Admin/Principal access only' }, { status: 403 });
     }
 
     const body = await request.json();

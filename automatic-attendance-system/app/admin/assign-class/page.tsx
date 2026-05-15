@@ -122,21 +122,21 @@ export default function AssignClassPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
       <Toaster position="top-right" />
       
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl shadow-xl p-8 text-white">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
             <div className="flex justify-between items-start">
               <div>
-                <h1 className="text-4xl font-bold mb-2">Assign Class & Roll Number 📝</h1>
-                <p className="text-blue-100 text-lg">Assign class and roll number to Clerk students</p>
+                <h1 className="text-3xl font-semibold text-gray-900 mb-2">Assign Class & Roll Number</h1>
+                <p className="text-gray-600">Assign class and roll number to Clerk students</p>
               </div>
               <button
                 onClick={() => router.push('/admin/dashboard')}
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-medium transition-colors"
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
               >
                 ← Back to Dashboard
               </button>
