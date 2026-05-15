@@ -1431,117 +1431,97 @@ export default function TeacherDashboard() {
         {activeTab === 'monitor' && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Verification Monitoring Dashboard</h2>
-              <p className="text-gray-600">Monitor student locations, sessions, and network security</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Student Monitoring</h2>
+              <p className="text-gray-600">View student attendance verification details</p>
             </div>
 
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow-sm border border-blue-200 p-6">
+            <div className="bg-blue-50 rounded-lg border border-blue-200 p-6 mb-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Real-Time Monitoring Dashboard</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Monitoring Dashboard</h3>
                   <p className="text-sm text-gray-700 mb-4">
-                    View comprehensive security and location data for all students:
+                    View student attendance and verification data:
                   </p>
                   <ul className="space-y-2 text-sm text-gray-700">
                     <li className="flex items-center gap-2">
                       <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       </svg>
-                      <strong>GPS Location Tracking:</strong> See exact student locations and distance from classroom
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                      <strong>VPN/Proxy Detection:</strong> Identify students using VPN or proxy networks
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                      </svg>
-                      <strong>Network Security:</strong> Monitor IP addresses, latency, jitter, and risk scores
+                      <span>Student location tracking</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <strong>Attendance Sessions:</strong> Track all verification sessions with detailed logs
+                      <span>Attendance verification sessions</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                       </svg>
-                      <strong>Security Flags:</strong> Automatic alerts for suspicious activity
+                      <span>Network security information</span>
                     </li>
                   </ul>
                 </div>
                 <div className="ml-6">
                   <button
                     onClick={() => router.push('/admin/verification-monitor')}
-                    className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center gap-3 transform hover:scale-105"
+                    className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-3"
                   >
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
-                    Open Full Dashboard
+                    View Full Dashboard
                   </button>
-                  <p className="text-xs text-gray-600 mt-2 text-center">Access complete monitoring tools</p>
+                  <p className="text-xs text-gray-600 mt-2 text-center">Access detailed monitoring</p>
                 </div>
               </div>
             </div>
 
-            {/* Quick Preview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-gray-700">Students Monitored</h4>
+                  <h4 className="text-sm font-medium text-gray-700">Total Students</h4>
                   <div className="bg-blue-100 rounded-lg p-2">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                   </div>
                 </div>
-                <p className="text-3xl font-black text-blue-600">{totalStudents}</p>
-                <p className="text-xs text-gray-500 mt-1">Total students tracked</p>
+                <p className="text-3xl font-bold text-blue-600">{totalStudents}</p>
               </div>
 
-              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-gray-700">Location Logs</h4>
+                  <h4 className="text-sm font-medium text-gray-700">Present Today</h4>
                   <div className="bg-green-100 rounded-lg p-2">
-                    <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                 </div>
-                <p className="text-3xl font-black text-green-600">Live</p>
-                <p className="text-xs text-gray-500 mt-1">GPS tracking active</p>
+                <p className="text-3xl font-bold text-green-600">
+                  {attendanceHistory.filter(r => r.status === 'present').length}
+                </p>
               </div>
 
-              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-gray-700">VPN Detected</h4>
-                  <div className="bg-red-100 rounded-lg p-2">
-                    <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-3xl font-black text-red-600">0</p>
-                <p className="text-xs text-gray-500 mt-1">Suspicious networks</p>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-gray-700">Network Latency</h4>
+                  <h4 className="text-sm font-medium text-gray-700">Face Recognition</h4>
                   <div className="bg-purple-100 rounded-lg p-2">
-                    <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                     </svg>
                   </div>
                 </div>
-                <p className="text-3xl font-black text-purple-600">~50ms</p>
-                <p className="text-xs text-gray-500 mt-1">Average response time</p>
+                <p className="text-3xl font-bold text-purple-600">
+                  {attendanceHistory.filter(r => 
+                    r.method === 'self_marked' || 
+                    r.method === 'ai_face_recognition' ||
+                    r.markedBy?.toLowerCase().includes('face')
+                  ).length}
+                </p>
               </div>
             </div>
 
@@ -1552,11 +1532,10 @@ export default function TeacherDashboard() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div>
-                  <h4 className="text-sm font-bold text-blue-900 mb-1">How to Use Monitoring</h4>
+                  <h4 className="text-sm font-semibold text-blue-900 mb-1">How to Use</h4>
                   <p className="text-sm text-blue-800">
-                    Click "Open Full Dashboard" to access the complete monitoring interface. You can view individual student details, 
-                    check their GPS locations, detect VPN usage, monitor network security, and identify students who may not be 
-                    physically present in class. Use this data to verify attendance accuracy and maintain classroom integrity.
+                    Click "View Full Dashboard" to see detailed student information including location data, 
+                    network security details, and attendance verification history.
                   </p>
                 </div>
               </div>

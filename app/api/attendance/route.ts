@@ -112,16 +112,9 @@ export async function GET(request: NextRequest) {
     let query: any = {};
 
     if (date) {
-      // Query for the entire day (from 00:00:00 to 23:59:59)
-      const startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(date);
-      endDate.setHours(23, 59, 59, 999);
-      
-      query.date = {
-        $gte: startDate,
-        $lte: endDate
-      };
+      // Attendance records store date as string in YYYY-MM-DD format
+      // So we query directly with the string
+      query.date = date;
     }
 
     if (studentId) {
