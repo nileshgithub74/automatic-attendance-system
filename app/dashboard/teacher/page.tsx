@@ -221,11 +221,13 @@ export default function TeacherDashboard() {
             record.method === 'Face Recognition' ||
             record.method === 'ai_face_recognition' ||
             record.method === 'real_ai_face_recognition' ||
+            record.method === 'self_marked' || // Students marking their own attendance with face recognition
             (record.markedBy && (
               record.markedBy.toLowerCase().includes('face') ||
               record.markedBy.toLowerCase().includes('self') ||
               record.markedBy.toLowerCase().includes('ai') ||
               record.markedBy === 'Self (Face Recognition)' ||
+              record.markedBy === 'Self (Student)' ||
               record.markedBy === 'AI Face Recognition System'
             )) ||
             (record.teacherName && (
@@ -233,7 +235,8 @@ export default function TeacherDashboard() {
               record.teacherName.toLowerCase().includes('self') ||
               record.teacherName.toLowerCase().includes('ai')
             )) ||
-            record.aiVerified === true;
+            record.aiVerified === true ||
+            record.capturedFaceImageUrl; // If there's a captured face image, it's face recognition
           
           return isFaceRecognition;
         });
@@ -246,7 +249,20 @@ export default function TeacherDashboard() {
         const response = await fetch(`/api/attendance?date=${reportDate}`);
         if (response.ok) {
           const data = await response.json();
-          console.log('All attendance records:', data);
+          console.log('📊 All attendance records for date:', reportDate, data);
+          console.log('📊 Total records fetched:', data.length);
+          
+          // Log each record to see what we have
+          data.forEach((record: any, index: number) => {
+            console.log(`Record ${index + 1}:`, {
+              studentName: record.studentName,
+              method: record.method,
+              markedBy: record.markedBy,
+              teacherName: record.teacherName,
+              aiVerified: record.aiVerified,
+              status: record.status,
+            });
+          });
           
           // Filter only face recognition records
           allFaceRecords = data.filter((record: any) => {
@@ -255,11 +271,13 @@ export default function TeacherDashboard() {
               record.method === 'Face Recognition' ||
               record.method === 'ai_face_recognition' ||
               record.method === 'real_ai_face_recognition' ||
+              record.method === 'self_marked' || // Students marking their own attendance with face recognition
               (record.markedBy && (
                 record.markedBy.toLowerCase().includes('face') ||
                 record.markedBy.toLowerCase().includes('self') ||
                 record.markedBy.toLowerCase().includes('ai') ||
                 record.markedBy === 'Self (Face Recognition)' ||
+                record.markedBy === 'Self (Student)' ||
                 record.markedBy === 'AI Face Recognition System'
               )) ||
               (record.teacherName && (
@@ -267,11 +285,21 @@ export default function TeacherDashboard() {
                 record.teacherName.toLowerCase().includes('self') ||
                 record.teacherName.toLowerCase().includes('ai')
               )) ||
-              record.aiVerified === true;
+              record.aiVerified === true ||
+              record.capturedFaceImageUrl; // If there's a captured face image, it's face recognition
             
-            console.log('Record:', record.studentName, 'markedBy:', record.markedBy, 'method:', record.method, 'teacherName:', record.teacherName, 'isFace:', isFaceRecognition);
+            if (isFaceRecognition) {
+              console.log('✅ MATCHED Face Recognition Record:', record.studentName, {
+                method: record.method,
+                markedBy: record.markedBy,
+                teacherName: record.teacherName,
+              });
+            }
+            
             return isFaceRecognition;
           });
+          
+          console.log('📊 Filtered face recognition records:', allFaceRecords.length, 'records');
         } else {
           toast.error('Failed to fetch face recognition records');
         }
@@ -913,10 +941,14 @@ export default function TeacherDashboard() {
                             r.method === 'Face Recognition' ||
                             r.method === 'ai_face_recognition' ||
                             r.method === 'real_ai_face_recognition' ||
+                            r.method === 'self_marked' ||
                             r.markedBy?.toLowerCase().includes('face') ||
                             r.markedBy?.toLowerCase().includes('ai') ||
+                            r.markedBy?.toLowerCase().includes('self') ||
                             r.markedBy === 'AI Face Recognition System' ||
-                            (r as any).aiVerified === true
+                            r.markedBy === 'Self (Student)' ||
+                            (r as any).aiVerified === true ||
+                            (r as any).capturedFaceImageUrl
                           ).length}
                         </p>
                       </div>
@@ -1035,10 +1067,14 @@ export default function TeacherDashboard() {
                                     record.method === 'Face Recognition' ||
                                     record.method === 'ai_face_recognition' ||
                                     record.method === 'real_ai_face_recognition' ||
+                                    record.method === 'self_marked' ||
                                     record.markedBy?.toLowerCase().includes('face') ||
                                     record.markedBy?.toLowerCase().includes('ai') ||
+                                    record.markedBy?.toLowerCase().includes('self') ||
                                     record.markedBy === 'AI Face Recognition System' ||
-                                    (record as any).aiVerified === true
+                                    record.markedBy === 'Self (Student)' ||
+                                    (record as any).aiVerified === true ||
+                                    (record as any).capturedFaceImageUrl
                                   );
                                   
                                   return (
