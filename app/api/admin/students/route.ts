@@ -40,9 +40,12 @@ export async function GET() {
             return {
               id: user.id,
               name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || email.split('@')[0],
+              rollNo: user.publicMetadata?.rollNo || 'N/A',
+              rollNumber: user.publicMetadata?.rollNo || 'N/A',
               class: user.publicMetadata?.class || 'Not Assigned',
               attendancePercent: 0,
               email: email,
+              faceRegistered: user.publicMetadata?.faceRegistered || false,
               source: 'clerk',
             };
           });
@@ -79,6 +82,8 @@ export async function GET() {
           .map((student: any) => ({
             id: student.id || student._id?.toString() || Math.random().toString(36).substring(2, 11),
             name: student.name || student.firstName + ' ' + student.lastName || 'Unknown Student',
+            rollNo: student.rollNo || student.rollNumber || 'N/A',
+            rollNumber: student.rollNo || student.rollNumber || 'N/A',
             class: student.class || student.className || 'Not Assigned',
             attendancePercent: student.attendancePercent || Math.floor(Math.random() * 30) + 70,
             email: student.email || '',

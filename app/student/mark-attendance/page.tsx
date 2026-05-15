@@ -170,6 +170,8 @@ export default function MarkAttendancePage() {
         context.drawImage(videoRef.current, 0, 0);
         const imageData = canvas.toDataURL('image/jpeg', 0.8);
         
+        console.log('🔍 Attempting face recognition...');
+        
         // Send to face recognition API
         const response = await fetch('/api/face-recognition/identify', {
           method: 'POST',
@@ -179,15 +181,23 @@ export default function MarkAttendancePage() {
 
         if (response.ok) {
           const result = await response.json();
+          console.log('✅ Face recognition response:', result);
           setRecognitionResult(result);
           
           if (result.recognized) {
+            // Stop the recognition interval
+            if ((window as any).recognitionInterval) {
+              clearInterval((window as any).recognitionInterval);
+            }
+            
             // Show student details for 5 seconds
             setShowStudentDetails(true);
             setMessage({ 
               type: 'success', 
-              text: `Face recognized! Hello ${result.student.name}!` 
+              text: `✅ Face recognized! Hello ${result.student.name}!` 
             });
+            
+            console.log('✅ Face matched:', result.student.name, 'Confidence:', result.confidence);
             
             // Wait 5 seconds then mark attendance
             setTimeout(() => {
@@ -196,20 +206,28 @@ export default function MarkAttendancePage() {
             }, 5000);
             
           } else {
+            console.log('❌ Face not recognized:', result.message);
             setMessage({ 
-              type: 'error', 
-              text: 'Face not found - Please position your face properly in the frame' 
+              type: 'info', 
+              text: result.message || 'Looking for your face...' 
             });
             
-            // Show error for 3 seconds then continue recognition
+            // Show message for 2 seconds then continue recognition
             setTimeout(() => {
               setRecognitionResult(null);
-            }, 3000);
+              setMessage(null);
+            }, 2000);
           }
+        } else {
+          console.error('❌ API error:', response.status, response.statusText);
+          setMessage({ 
+            type: 'error', 
+            text: 'Connection error. Please check your network.' 
+          });
         }
       }
     } catch (error) {
-      console.error('Face recognition error:', error);
+      console.error('❌ Face recognition error:', error);
       setMessage({ 
         type: 'error', 
         text: 'Face recognition failed. Please try again.' 
@@ -587,77 +605,49 @@ export default function MarkAttendancePage() {
                       
                       {/* Face Recognition Overlay */}
                       <div className="absolute inset-0 pointer-events-none">
-                        {/* Recognition Status Overlay - Positioned at top center */}
-                        {recognitionResult && (
+                        {/* Recognition Status Overlay - Only show when face is RECOGNIZED */}
+                        {recognitionResult?.recognized && (
                           <div className="absolute top-6 left-6 right-6 z-10">
-                            {recognitionResult.recognized ? (
-                              // Green banner with student info exactly like the image
-                              <div className="bg-green-500 text-white p-4 rounded-xl shadow-2xl border-2 border-green-400">
-                                <div className="flex items-center gap-4">
-                                  {/* Checkmark icon */}
-                                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
-                                    <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                  </div>
-                                  
-                                  {/* Student details */}
-                                  <div className="flex-1">
-                                    <div className="text-2xl font-bold mb-1">{recognitionResult.student.name}</div>
-                                    <div className="text-lg opacity-95">
-                                      Roll: {recognitionResult.student.rollNo} | Class: {recognitionResult.student.class}
-                                    </div>
-                                  </div>
+                            {/* Green banner with student info */}
+                            <div className="bg-green-500 text-white p-4 rounded-xl shadow-2xl border-2 border-green-400">
+                              <div className="flex items-center gap-4">
+                                {/* Checkmark icon */}
+                                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                                  <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
                                 </div>
                                 
-                                {showStudentDetails && (
-                                  <div className="mt-3 text-center text-lg font-medium bg-white bg-opacity-20 rounded-lg py-2">
-                                    Marking attendance automatically...
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              // Red banner for unrecognized face
-                              <div className="bg-red-500 text-white p-4 rounded-xl shadow-2xl border-2 border-red-400">
-                                <div className="flex items-center gap-4">
-                                  {/* X icon */}
-                                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
-                                    <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </div>
-                                  
-                                  {/* Error message */}
-                                  <div className="flex-1">
-                                    <div className="text-2xl font-bold mb-1">Face not found</div>
-                                    <div className="text-lg opacity-95">
-                                      Please position your face properly in the frame
-                                    </div>
+                                {/* Student details */}
+                                <div className="flex-1">
+                                  <div className="text-2xl font-bold mb-1">{recognitionResult.student.name}</div>
+                                  <div className="text-lg opacity-95">
+                                    Roll: {recognitionResult.student.rollNo} | Class: {recognitionResult.student.class}
                                   </div>
                                 </div>
                               </div>
-                            )}
+                              
+                              {showStudentDetails && (
+                                <div className="mt-3 text-center text-lg font-medium bg-white bg-opacity-20 rounded-lg py-2">
+                                  Marking attendance automatically...
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
 
-                        {/* Simple border overlay for recognition feedback */}
+                        {/* Green border when face is recognized */}
                         {recognitionResult?.recognized && (
                           <div className="absolute inset-4">
                             <div className="w-full h-full border-4 border-green-400 rounded-lg shadow-lg shadow-green-400/30"></div>
                           </div>
                         )}
                         
-                        {recognitionResult?.recognized === false && (
-                          <div className="absolute inset-4">
-                            <div className="w-full h-full border-4 border-red-400 rounded-lg shadow-lg shadow-red-400/30"></div>
-                          </div>
-                        )}
-                        
                         {/* Center recognition status */}
-                        {isRecognizing && (
+                        {isRecognizing && !recognitionResult?.recognized && (
                           <div className="absolute inset-0 flex items-center justify-center">
                             <div className="bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                              Recognizing Face...
+                              🔍 Looking for your face...
                             </div>
                           </div>
                         )}

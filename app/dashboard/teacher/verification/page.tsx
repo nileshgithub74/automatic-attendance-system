@@ -14,9 +14,11 @@ export default function VerificationSessionPage() {
   const [duration, setDuration] = useState(5); // minutes
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [capturedImages, setCapturedImages] = useState(0);
-  const [totalImages, setTotalImages] = useState(10);
+  const [totalImages, setTotalImages] = useState(5); // Fixed to 5 images
   const [cameraReady, setCameraReady] = useState(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [detectedFaces, setDetectedFaces] = useState<Array<{ name: string; confidence: number }>>([]);
+  const [faceDetectionLog, setFaceDetectionLog] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -52,10 +54,10 @@ export default function VerificationSessionPage() {
           // Send location to monitoring system
           sendLocationToMonitoring(locationData, position.coords.accuracy);
           
-          toast.success('Location obtained');
+          toast.success('Location found');
         },
         (error) => {
-          toast.error('Failed to get location. Please enable location services.');
+          toast.error('Please enable location');
         }
       );
     }
@@ -106,22 +108,22 @@ export default function VerificationSessionPage() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setCameraReady(true);
-        toast.success('Camera initialized');
+        toast.success('Camera ready');
       }
     } catch (error) {
       console.error('Camera error:', error);
-      toast.error('Failed to access camera. Please grant camera permissions.');
+      toast.error('Camera access denied');
     }
   };
 
   const startSession = async () => {
     if (!location) {
-      toast.error('Location required. Please enable location services.');
+      toast.error('Location needed');
       return;
     }
 
     if (!cameraReady) {
-      toast.error('Camera not ready. Please initialize camera first.');
+      toast.error('Camera not ready');
       return;
     }
 
@@ -130,26 +132,49 @@ export default function VerificationSessionPage() {
       const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       setSessionId(newSessionId);
       
-      // Set total images to capture (5-10 images)
-      const imagesToCapture = Math.floor(Math.random() * 6) + 5; // Random between 5-10
+      // Calculate images and interval based on duration
+      let imagesToCapture = 5;
+      let captureIntervalSeconds = 60; // 1 minute default
+      
+      if (duration === 5) {
+        imagesToCapture = 5;
+        captureIntervalSeconds = 60; // Every 1 minute (5 min / 5 images)
+      } else if (duration === 7) {
+        imagesToCapture = 7;
+        captureIntervalSeconds = 60; // Every 1 minute (7 min / 7 images)
+      } else if (duration === 10) {
+        imagesToCapture = 10;
+        captureIntervalSeconds = 60; // Every 1 minute (10 min / 10 images)
+      } else if (duration === 30) {
+        imagesToCapture = 20;
+        captureIntervalSeconds = 90; // Every 1.5 minutes (30 min / 20 images)
+      } else if (duration === 60) {
+        imagesToCapture = 20;
+        captureIntervalSeconds = 180; // Every 3 minutes (60 min / 20 images)
+      } else if (duration === 120) {
+        imagesToCapture = 20;
+        captureIntervalSeconds = 360; // Every 6 minutes (120 min / 20 images)
+      }
+      
       setTotalImages(imagesToCapture);
       setTimeRemaining(duration * 60);
       setSessionActive(true);
       
-      toast.success(`Verification session started! Will capture ${imagesToCapture} images.`);
+      console.log(`📸 Session config: ${imagesToCapture} images, every ${captureIntervalSeconds} seconds`);
+      toast.success(`Session started! Taking ${imagesToCapture} photos.`);
       
       // Start countdown timer
       startTimer();
       
-      // Start automatic image capture
-      startImageCapture();
+      // Start automatic image capture with calculated interval
+      startImageCapture(captureIntervalSeconds, newSessionId);
       
       // Start continuous location tracking (every 30 seconds)
       startLocationTracking();
       
     } catch (error) {
       console.error('Error starting session:', error);
-      toast.error('Error starting verification session');
+      toast.error('Error starting session');
     }
   };
 
@@ -195,25 +220,27 @@ export default function VerificationSessionPage() {
     }, 1000);
   };
 
-  const startImageCapture = () => {
-    const captureInterval = 10; // seconds - capture every 10 seconds
+  const startImageCapture = (captureIntervalSeconds: number, currentSessionId: string) => {
     let count = 0;
 
     const interval = setInterval(() => {
       if (count >= totalImages) {
         clearInterval(interval);
-        // Start AI verification process
-        processImagesWithAI();
+        toast.success('All photos taken! Marking attendance...');
+        // Mark attendance automatically based on face detection
+        setTimeout(() => {
+          markAttendanceAutomatically();
+        }, 1000);
         return;
       }
 
       count++;
       setCapturedImages(count);
-      captureImage(count);
-    }, captureInterval * 1000);
+      captureImage(count, currentSessionId);
+    }, captureIntervalSeconds * 1000);
   };
 
-  const captureImage = async (sequenceNumber: number) => {
+  const captureImage = async (sequenceNumber: number, currentSessionId: string) => {
     if (!videoRef.current) return;
 
     const canvas = document.createElement('canvas');
@@ -225,20 +252,73 @@ export default function VerificationSessionPage() {
       ctx.drawImage(videoRef.current, 0, 0);
       const imageData = canvas.toDataURL('image/jpeg', 0.9);
       
-      // Upload image to Cloudinary
-      await uploadImageToCloudinary(imageData, sequenceNumber);
+      // Detect faces in the image
+      await detectFacesInImage(imageData);
       
-      toast.success(`Image ${sequenceNumber}/${totalImages} captured and uploaded`);
+      // Upload image to Cloudinary
+      const uploaded = await uploadImageToCloudinary(imageData, sequenceNumber, currentSessionId);
+      
+      if (uploaded) {
+        toast.success(`Photo ${sequenceNumber}/${totalImages} saved`);
+      }
     }
   };
 
-  const uploadImageToCloudinary = async (imageData: string, sequenceNumber: number) => {
+  const detectFacesInImage = async (imageData: string) => {
     try {
+      console.log('🔍 Calling face detection API...');
+      
+      const response = await fetch('/api/verification/detect-faces', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData }),
+      });
+
+      console.log('Face detection response status:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Face detection data:', data);
+        
+        if (data.faces && data.faces.length > 0) {
+          console.log(`✅ Detected ${data.faces.length} faces:`, data.faces.map((f: any) => f.name));
+          setDetectedFaces(data.faces);
+          
+          // Log detected faces for attendance calculation
+          const updatedLog = new Map(faceDetectionLog);
+          data.faces.forEach((face: any) => {
+            const currentCount = updatedLog.get(face.studentId) || 0;
+            updatedLog.set(face.studentId, currentCount + 1);
+          });
+          setFaceDetectionLog(updatedLog);
+          
+          console.log('Face detection log updated:', Object.fromEntries(updatedLog));
+          
+          // Clear detected faces after 3 seconds
+          setTimeout(() => {
+            setDetectedFaces([]);
+          }, 3000);
+        } else {
+          console.log('⚠️ No faces detected in this image');
+        }
+      } else {
+        console.error('❌ Face detection API error:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ Error detecting faces:', error);
+    }
+  };
+
+  const uploadImageToCloudinary = async (imageData: string, sequenceNumber: number, currentSessionId: string) => {
+    try {
+      console.log(`📤 Uploading photo ${sequenceNumber} to Cloudinary...`);
+      console.log('Session ID:', currentSessionId);
+      
       const response = await fetch('/api/verification/upload-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sessionId,
+          sessionId: currentSessionId,
           imageData,
           sequenceNumber,
           location,
@@ -248,17 +328,110 @@ export default function VerificationSessionPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Image uploaded to Cloudinary:', data.imageUrl);
+        console.log('✅ Image uploaded to Cloudinary:', data.imageUrl);
+        return true;
       } else {
-        console.error('Failed to upload image to Cloudinary');
+        const errorData = await response.json();
+        console.error('❌ Failed to upload image:', errorData);
+        return false;
       }
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('❌ Error uploading image:', error);
+      return false;
+    }
+  };
+
+  const markAttendanceAutomatically = async () => {
+    try {
+      console.log('📊 ========== MARKING ATTENDANCE AUTOMATICALLY ==========');
+      console.log('📊 Calculating attendance from face detection log...');
+      console.log('Face detection log:', Object.fromEntries(faceDetectionLog));
+      console.log('Total images captured:', totalImages);
+
+      // Calculate which students should be marked present
+      // Rule: Student must appear in at least 60% of photos (3 out of 5)
+      const threshold = Math.ceil(totalImages * 0.6); // 60% threshold
+      console.log(`Threshold: Student must appear in ${threshold}/${totalImages} photos`);
+
+      const presentStudents: Array<{ studentId: string; name: string; detectionCount: number; percentage: number }> = [];
+      const absentStudents: Array<{ studentId: string; name: string; detectionCount: number }> = [];
+
+      // Get all registered students
+      console.log('Fetching all students...');
+      const studentsResponse = await fetch('/api/admin/students');
+      const allStudents = studentsResponse.ok ? await studentsResponse.json() : [];
+      console.log(`Total students in system: ${allStudents.length}`);
+
+      // Check each student's detection count
+      for (const student of allStudents) {
+        const detectionCount = faceDetectionLog.get(student.id) || 0;
+        const percentage = Math.round((detectionCount / totalImages) * 100);
+
+        console.log(`Student: ${student.name}, Detected: ${detectionCount}/${totalImages} (${percentage}%)`);
+
+        if (detectionCount >= threshold) {
+          presentStudents.push({
+            studentId: student.id,
+            name: student.name,
+            detectionCount,
+            percentage
+          });
+          console.log(`✅ ${student.name} - PRESENT`);
+        } else {
+          absentStudents.push({
+            studentId: student.id,
+            name: student.name,
+            detectionCount
+          });
+          console.log(`❌ ${student.name} - ABSENT`);
+        }
+      }
+
+      console.log(`✅ Present: ${presentStudents.length} students`);
+      console.log(`❌ Absent: ${absentStudents.length} students`);
+
+      // Mark attendance in database
+      console.log('Calling mark-attendance-auto API...');
+      const response = await fetch('/api/verification/mark-attendance-auto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          presentStudents,
+          absentStudents,
+          totalImages,
+          threshold,
+          date: new Date().toISOString().split('T')[0]
+        }),
+      });
+
+      console.log('API response status:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Attendance marked successfully:', data);
+        toast.success(`Attendance marked! ${presentStudents.length} present, ${absentStudents.length} absent`);
+        
+        // Show detailed results
+        console.log('Attendance marking results:', data);
+        
+        // End session after marking attendance
+        setTimeout(() => {
+          endSession();
+        }, 2000);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Failed to mark attendance:', errorData);
+        toast.error('Failed to mark attendance');
+      }
+    } catch (error) {
+      console.error('❌ Error marking attendance:', error);
+      toast.error('Error marking attendance');
     }
   };
 
   const processImagesWithAI = async () => {
-    toast.loading('Processing images with AI... This may take a few moments.');
+    toast.loading('Checking attendance... Please wait.');
     
     try {
       // Option 1: Auto-mark attendance for all students in class
@@ -274,7 +447,7 @@ export default function VerificationSessionPage() {
 
       if (autoMarkResponse.ok) {
         const autoMarkResults = await autoMarkResponse.json();
-        toast.success(`Attendance automatically marked! ${autoMarkResults.summary.presentCount} present, ${autoMarkResults.summary.absentCount} absent`);
+        toast.success(`Attendance marked! ${autoMarkResults.summary.presentCount} present, ${autoMarkResults.summary.absentCount} absent`);
         
         // Show detailed results
         console.log('Auto-marked attendance results:', autoMarkResults);
@@ -322,9 +495,9 @@ export default function VerificationSessionPage() {
 
       if (verificationResponse.ok) {
         const verificationResults = await verificationResponse.json();
-        toast.success('AI verification completed!');
+        toast.success('Verification completed!');
         
-        // Update attendance based on AI results
+        // Update attendance based on results
         await updateAttendanceWithAIResults(verificationResults);
       } else {
         toast.error('AI verification failed');
@@ -355,7 +528,7 @@ ${results.absentStudents.map((s: any) =>
     `;
     
     console.log(summary);
-    toast.success('Attendance marked automatically using face recognition!');
+    toast.success('Attendance marked using face recognition!');
   };
 
   const updateAttendanceWithAIResults = async (results: any) => {
@@ -381,7 +554,7 @@ ${results.absentStudents.map((s: any) =>
 
   const endSession = async () => {
     setSessionActive(false);
-    toast.success('Verification session completed! Processing results...');
+    toast.success('Session completed! Checking results...');
     
     // Stop location tracking
     if ((window as any).locationTrackingInterval) {
@@ -461,7 +634,7 @@ ${results.absentStudents.map((s: any) =>
         <div className="mb-8">
           <button
             onClick={() => router.back()}
-            className="mb-4 flex items-center gap-2 text-purple-600 hover:text-purple-700 font-medium"
+            className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-800 font-medium"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -469,9 +642,9 @@ ${results.absentStudents.map((s: any) =>
             Back to Dashboard
           </button>
           
-          <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 rounded-2xl shadow-xl p-8 text-white">
-            <h1 className="text-4xl font-bold mb-2">Smart AI Verification Session</h1>
-            <p className="text-purple-100 text-lg">Automated classroom attendance verification using AI face recognition</p>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h1 className="text-2xl font-semibold text-gray-900 mb-1">Attendance Verification</h1>
+            <p className="text-gray-600">Take photos to verify student attendance</p>
           </div>
         </div>
 
@@ -483,7 +656,7 @@ ${results.absentStudents.map((s: any) =>
               <p className="text-3xl font-bold text-purple-600">{formatTime(timeRemaining)}</p>
             </div>
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
-              <p className="text-sm text-gray-600 mb-1">Images Captured</p>
+              <p className="text-sm text-gray-600 mb-1">Photos Taken</p>
               <p className="text-3xl font-bold text-blue-600">{capturedImages}/{totalImages}</p>
             </div>
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
@@ -524,9 +697,39 @@ ${results.absentStudents.map((s: any) =>
             )}
             
             {sessionActive && (
-              <div className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-full flex items-center gap-2 animate-pulse">
-                <span className="w-3 h-3 bg-white rounded-full"></span>
-                RECORDING
+              <>
+                <div className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-full flex items-center gap-2 animate-pulse">
+                  <span className="w-3 h-3 bg-white rounded-full"></span>
+                  RECORDING
+                </div>
+                
+                <div className="absolute top-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span className="text-xs font-medium">Face Detection Active</span>
+                </div>
+              </>
+            )}
+
+            {/* Detected Faces Banner */}
+            {detectedFaces.length > 0 && (
+              <div className="absolute bottom-4 left-4 right-4 space-y-2">
+                {detectedFaces.map((face, index) => (
+                  <div
+                    key={index}
+                    className="bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-3 animate-fade-in"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="font-semibold text-sm">{face.name}</span>
+                    <span className="text-xs bg-green-600 px-2 py-1 rounded">
+                      {Math.round(face.confidence * 100)}%
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -535,12 +738,12 @@ ${results.absentStudents.map((s: any) =>
         {/* Controls */}
         {!sessionActive && (
           <div className="bg-white rounded-xl shadow-xl p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Session Configuration</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Setup</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Session Duration
+                  Duration
                 </label>
                 <select
                   value={duration}
@@ -558,7 +761,7 @@ ${results.absentStudents.map((s: any) =>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location Status
+                  Location
                 </label>
                 <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-lg">
                   {location ? (
@@ -566,14 +769,14 @@ ${results.absentStudents.map((s: any) =>
                       <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <span className="text-green-700 font-medium">Location obtained</span>
+                      <span className="text-green-700 font-medium">Ready</span>
                     </>
                   ) : (
                     <>
                       <svg className="w-6 h-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
-                      <span className="text-orange-700 font-medium">Location required</span>
+                      <span className="text-orange-700 font-medium">Required</span>
                     </>
                   )}
                 </div>
@@ -602,7 +805,7 @@ ${results.absentStudents.map((s: any) =>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Start AI Verification Session
+                Start Session
               </button>
             </div>
           </div>

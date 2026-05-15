@@ -30,24 +30,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
     }
 
+    console.log('🔍 [Face Recognition] Starting face identification...');
+
     // Step 1: Extract embedding from the captured face image
     let capturedEmbedding: number[];
     try {
       const result = await extractEmbedding(faceImage);
+      console.log('📊 [Face Recognition] Embedding extraction result:', {
+        faceDetected: result.faceDetected,
+        embeddingLength: result.embedding.length,
+        quality: result.quality
+      });
+      
       if (!result.faceDetected || result.embedding.length === 0) {
+        console.log('❌ [Face Recognition] No face detected in image');
         return NextResponse.json({
           success: true,
           recognized: false,
-          message: 'No face detected in the image. Please position your face properly.',
+          message: 'Looking for your face...',
         });
       }
       capturedEmbedding = result.embedding;
     } catch (err) {
-      console.error('Embedding extraction failed:', err);
+      console.error('❌ [Face Recognition] Embedding extraction failed:', err);
       return NextResponse.json({
         success: true,
         recognized: false,
-        message: 'Face detection failed. Please try again.',
+        message: 'Looking for your face...',
       });
     }
 
@@ -56,11 +65,14 @@ export async function POST(request: NextRequest) {
       .find({ isActive: true })
       .toArray();
 
+    console.log(`📚 [Face Recognition] Found ${faceEmbeddings.length} registered faces in database`);
+
     if (faceEmbeddings.length === 0) {
+      console.log('⚠️ [Face Recognition] No registered faces in system');
       return NextResponse.json({
         success: true,
         recognized: false,
-        message: 'No registered faces found in the system.',
+        message: 'No registered faces found. Please register your face first.',
       });
     }
 
@@ -68,6 +80,8 @@ export async function POST(request: NextRequest) {
     const THRESHOLD = 0.6; // Distance threshold — lower means stricter matching
     let bestMatch: any = null;
     let bestDistance = Infinity;
+
+    console.log('🔄 [Face Recognition] Comparing against registered faces...');
 
     for (const record of faceEmbeddings) {
       if (!record.averageEmbedding || record.averageEmbedding.length === 0) continue;
@@ -80,6 +94,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log('📏 [Face Recognition] Best match distance:', bestDistance, 'Threshold:', THRESHOLD);
+
     // Step 4: Check if best match is within threshold
     if (bestMatch && bestDistance <= THRESHOLD) {
       const confidence = distanceToConfidence(bestDistance);
@@ -90,12 +106,19 @@ export async function POST(request: NextRequest) {
       });
 
       if (!student) {
+        console.log('❌ [Face Recognition] Student record not found for match');
         return NextResponse.json({
           success: true,
           recognized: false,
-          message: 'Student record not found.',
+          message: 'Looking for your face...',
         });
       }
+
+      console.log('✅ [Face Recognition] Face matched!', {
+        studentName: student.name,
+        confidence: confidence,
+        distance: bestDistance
+      });
 
       return NextResponse.json({
         success: true,
@@ -114,11 +137,11 @@ export async function POST(request: NextRequest) {
     }
 
     // No match found within threshold
+    console.log('❌ [Face Recognition] No match found within threshold');
     return NextResponse.json({
       success: true,
       recognized: false,
-      message: 'Face not recognized. Please register your face or try again.',
-      suggestion: 'Contact your teacher or admin to register your face in the system.',
+      message: 'Looking for your face...',
     });
 
   } catch (error) {

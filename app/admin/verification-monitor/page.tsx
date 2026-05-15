@@ -521,7 +521,12 @@ export default function VerificationMonitorPage() {
                         </div>
                         <div>
                           <p className="text-sm text-gray-600">Location</p>
-                          <p className="font-medium text-gray-900">{selectedStudent.network.city}, {selectedStudent.network.country}</p>
+                          <p className="font-medium text-gray-900">
+                            {selectedStudent.network.city && selectedStudent.network.country && 
+                             selectedStudent.network.city !== 'Unknown' && selectedStudent.network.country !== 'Unknown'
+                              ? `${selectedStudent.network.city}, ${selectedStudent.network.country}`
+                              : 'Not Available'}
+                          </p>
                         </div>
                         <div>
                           <p className="text-sm text-gray-600">ISP</p>

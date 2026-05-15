@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
             rollNo: user.publicMetadata?.rollNo || 'N/A',
             class: user.publicMetadata?.class || 'Not Assigned',
             parentNumber: user.publicMetadata?.parentNumber || 'N/A',
-            faceRegistered: false,
+            faceRegistered: user.publicMetadata?.faceRegistered || false,
             source: 'clerk'
           };
         });
