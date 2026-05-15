@@ -43,16 +43,53 @@ export default function VerificationSessionPage() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLocation({
+          const locationData = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-          });
+          };
+          setLocation(locationData);
+          
+          // Send location to monitoring system
+          sendLocationToMonitoring(locationData, position.coords.accuracy);
+          
           toast.success('Location obtained');
         },
         (error) => {
           toast.error('Failed to get location. Please enable location services.');
         }
       );
+    }
+  };
+
+  const sendLocationToMonitoring = async (locationData: { latitude: number; longitude: number }, accuracy: number) => {
+    try {
+      const response = await fetch('/api/admin/verification/location-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          userName: `${user?.firstName} ${user?.lastName}`,
+          location: {
+            latitude: locationData.latitude,
+            longitude: locationData.longitude,
+            accuracy: accuracy,
+          },
+          timestamp: new Date().toISOString(),
+          deviceInfo: {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            deviceId: `teacher_${user?.id}`,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        console.log('Location sent to monitoring system');
+      } else {
+        console.error('Failed to send location to monitoring');
+      }
+    } catch (error) {
+      console.error('Error sending location:', error);
     }
   };
 
@@ -107,10 +144,42 @@ export default function VerificationSessionPage() {
       // Start automatic image capture
       startImageCapture();
       
+      // Start continuous location tracking (every 30 seconds)
+      startLocationTracking();
+      
     } catch (error) {
       console.error('Error starting session:', error);
       toast.error('Error starting verification session');
     }
+  };
+
+  const startLocationTracking = () => {
+    // Send location immediately
+    if (location) {
+      sendLocationToMonitoring(location, 10);
+    }
+    
+    // Then send every 30 seconds during the session
+    const locationInterval = setInterval(() => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const locationData = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            };
+            setLocation(locationData);
+            sendLocationToMonitoring(locationData, position.coords.accuracy);
+          },
+          (error) => {
+            console.error('Location tracking error:', error);
+          }
+        );
+      }
+    }, 30000); // Every 30 seconds
+
+    // Store interval ID to clear it later
+    (window as any).locationTrackingInterval = locationInterval;
   };
 
   const startTimer = () => {
@@ -189,7 +258,7 @@ export default function VerificationSessionPage() {
   };
 
   const processImagesWithAI = async () => {
-    toast.info('Processing images with AI... This may take a few moments.');
+    toast.loading('Processing images with AI... This may take a few moments.');
     
     try {
       // Option 1: Auto-mark attendance for all students in class
@@ -313,6 +382,11 @@ ${results.absentStudents.map((s: any) =>
   const endSession = async () => {
     setSessionActive(false);
     toast.success('Verification session completed! Processing results...');
+    
+    // Stop location tracking
+    if ((window as any).locationTrackingInterval) {
+      clearInterval((window as any).locationTrackingInterval);
+    }
     
     // Stop camera
     if (videoRef.current && videoRef.current.srcObject) {
@@ -466,7 +540,7 @@ ${results.absentStudents.map((s: any) =>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Session Duration (minutes)
+                  Session Duration
                 </label>
                 <select
                   value={duration}
@@ -476,6 +550,9 @@ ${results.absentStudents.map((s: any) =>
                   <option value={5}>5 minutes</option>
                   <option value={7}>7 minutes</option>
                   <option value={10}>10 minutes</option>
+                  <option value={30}>30 minutes</option>
+                  <option value={60}>1 hour</option>
+                  <option value={120}>2 hours</option>
                 </select>
               </div>
               
