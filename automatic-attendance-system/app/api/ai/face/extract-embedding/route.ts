@@ -92,8 +92,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('🖼️ [Extract Embedding] Processing image...');
+
     // Check if image contains face indicators
     const faceDetected = hasFaceIndicators(image);
+
+    console.log('👤 [Extract Embedding] Face detected:', faceDetected);
 
     if (!faceDetected) {
       return NextResponse.json({
@@ -107,6 +111,8 @@ export async function POST(request: NextRequest) {
     const embedding = base64ToPixelFeatures(image);
     const quality = assessImageQuality(image);
 
+    console.log('✅ [Extract Embedding] Success - Embedding length:', embedding.length, 'Quality:', quality);
+
     return NextResponse.json({
       embedding,
       quality,
@@ -114,7 +120,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Embedding extraction error:', error);
+    console.error('❌ [Extract Embedding] Error:', error);
     return NextResponse.json(
       { error: error.message || 'Embedding extraction failed' },
       { status: 500 }

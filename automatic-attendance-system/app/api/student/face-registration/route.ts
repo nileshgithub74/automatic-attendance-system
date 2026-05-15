@@ -180,39 +180,120 @@ export async function POST(request: NextRequest) {
     // Update student record to mark face as registered
     console.log('🔄 Updating user record for studentId:', studentId, 'Type:', typeof studentId);
     
+    let userUpdated = false;
+    
     try {
-      // Use mongoose ObjectId to avoid BSON version conflicts
-      const objectId = new mongoose.Types.ObjectId(studentId);
+      // Try multiple approaches to update the user record in MongoDB
+      let updateResult;
       
-      const updateResult = await db.collection('users').updateOne(
-        { _id: objectId },
-        { 
-          $set: { 
-            faceRegistered: true,
-            faceRegisteredAt: new Date()
-          } 
-        }
-      );
+      // Approach 1: Try with ObjectId
+      try {
+        const objectId = new mongoose.Types.ObjectId(studentId);
+        updateResult = await db.collection('users').updateOne(
+          { _id: objectId },
+          { 
+            $set: { 
+              faceRegistered: true,
+              faceRegisteredAt: new Date()
+            } 
+          }
+        );
+        console.log('✅ Updated users collection with ObjectId:', {
+          matched: updateResult.matchedCount,
+          modified: updateResult.modifiedCount
+        });
+        if (updateResult.matchedCount > 0) userUpdated = true;
+      } catch (oidError) {
+        console.log('⚠️ ObjectId approach failed, trying string ID');
+      }
       
-      console.log('✅ Updated users collection:', {
-        matched: updateResult.matchedCount,
-        modified: updateResult.modifiedCount,
-        success: updateResult.modifiedCount > 0
-      });
+      // Approach 2: Try with string ID if ObjectId failed
+      if (!updateResult || updateResult.matchedCount === 0) {
+        updateResult = await db.collection('users').updateOne(
+          { _id: studentId },
+          { 
+            $set: { 
+              faceRegistered: true,
+              faceRegisteredAt: new Date()
+            } 
+          }
+        );
+        console.log('✅ Updated users collection with string ID:', {
+          matched: updateResult.matchedCount,
+          modified: updateResult.modifiedCount
+        });
+        if (updateResult.matchedCount > 0) userUpdated = true;
+      }
+      
+      // Approach 3: Try with clerkId field
+      if (!updateResult || updateResult.matchedCount === 0) {
+        updateResult = await db.collection('users').updateOne(
+          { clerkId: studentId },
+          { 
+            $set: { 
+              faceRegistered: true,
+              faceRegisteredAt: new Date()
+            } 
+          }
+        );
+        console.log('✅ Updated users collection with clerkId:', {
+          matched: updateResult.matchedCount,
+          modified: updateResult.modifiedCount
+        });
+        if (updateResult.matchedCount > 0) userUpdated = true;
+      }
       
       // Also update in students collection if exists
-      await db.collection('students').updateOne(
-        { _id: objectId },
-        { 
-          $set: { 
-            faceRegistered: true,
-            faceRegisteredAt: new Date()
-          } 
-        }
-      );
+      try {
+        const objectId = new mongoose.Types.ObjectId(studentId);
+        const studentsResult = await db.collection('students').updateOne(
+          { _id: objectId },
+          { 
+            $set: { 
+              faceRegistered: true,
+              faceRegisteredAt: new Date()
+            } 
+          }
+        );
+        if (studentsResult.matchedCount > 0) userUpdated = true;
+      } catch (studentsError) {
+        // Try with string ID
+        const studentsResult = await db.collection('students').updateOne(
+          { _id: studentId },
+          { 
+            $set: { 
+              faceRegistered: true,
+              faceRegisteredAt: new Date()
+            } 
+          }
+        );
+        if (studentsResult.matchedCount > 0) userUpdated = true;
+      }
+      
+      console.log('✅ MongoDB update completed, userUpdated:', userUpdated);
     } catch (updateError: any) {
-      console.error('❌ Error updating user record:', updateError.message);
-      // Continue anyway since face registration was successful
+      console.error('❌ Error updating MongoDB user record:', updateError.message);
+    }
+    
+    // If MongoDB update failed, try updating Clerk
+    if (!userUpdated) {
+      try {
+        console.log('🔄 Attempting to update Clerk user metadata...');
+        const { clerkClient } = await import('@clerk/nextjs/server');
+        const client = await clerkClient();
+        
+        await client.users.updateUserMetadata(studentId, {
+          publicMetadata: {
+            faceRegistered: true,
+            faceRegisteredAt: new Date().toISOString()
+          }
+        });
+        
+        console.log('✅ Successfully updated Clerk user metadata');
+        userUpdated = true;
+      } catch (clerkError: any) {
+        console.error('❌ Error updating Clerk user:', clerkError.message);
+      }
     }
     
     // Log location if provided

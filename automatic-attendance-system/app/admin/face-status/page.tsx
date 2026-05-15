@@ -209,11 +209,6 @@ export default function AdminFaceStatusPage() {
                 <p className="text-sm font-medium text-gray-600 mb-1">Not Registered</p>
                 <p className="text-4xl font-bold text-red-600">{stats.notRegisteredCount}</p>
               </div>
-              <div className="bg-red-100 rounded-full p-4">
-                <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
             </div>
           </div>
         </div>

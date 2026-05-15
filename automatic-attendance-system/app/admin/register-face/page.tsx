@@ -119,9 +119,16 @@ export default function AdminRegisterFacePage() {
       if (data.success) {
         toast.dismiss(loadingToast);
         toast.success(`Face ${data.isUpdate ? 'updated' : 'registered'} successfully for ${selectedStudent.name}!`);
+        
+        // Clear form
         setCapturedImages([]);
         setSelectedStudent(null);
-        fetchStudents();
+        
+        // Force refresh students list with a small delay to ensure DB update is complete
+        setTimeout(async () => {
+          await fetchStudents();
+          toast.success('Student list refreshed!');
+        }, 1000);
       } else {
         toast.dismiss(loadingToast);
         toast.error(data.message || 'Registration failed');
