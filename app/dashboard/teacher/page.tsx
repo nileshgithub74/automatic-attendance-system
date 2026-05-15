@@ -219,15 +219,21 @@ export default function TeacherDashboard() {
           const isFaceRecognition = 
             record.method === 'face_recognition' || 
             record.method === 'Face Recognition' ||
+            record.method === 'ai_face_recognition' ||
+            record.method === 'real_ai_face_recognition' ||
             (record.markedBy && (
               record.markedBy.toLowerCase().includes('face') ||
               record.markedBy.toLowerCase().includes('self') ||
-              record.markedBy === 'Self (Face Recognition)'
+              record.markedBy.toLowerCase().includes('ai') ||
+              record.markedBy === 'Self (Face Recognition)' ||
+              record.markedBy === 'AI Face Recognition System'
             )) ||
             (record.teacherName && (
               record.teacherName.toLowerCase().includes('face') ||
-              record.teacherName.toLowerCase().includes('self')
-            ));
+              record.teacherName.toLowerCase().includes('self') ||
+              record.teacherName.toLowerCase().includes('ai')
+            )) ||
+            record.aiVerified === true;
           
           return isFaceRecognition;
         });
@@ -247,15 +253,21 @@ export default function TeacherDashboard() {
             const isFaceRecognition = 
               record.method === 'face_recognition' || 
               record.method === 'Face Recognition' ||
+              record.method === 'ai_face_recognition' ||
+              record.method === 'real_ai_face_recognition' ||
               (record.markedBy && (
                 record.markedBy.toLowerCase().includes('face') ||
                 record.markedBy.toLowerCase().includes('self') ||
-                record.markedBy === 'Self (Face Recognition)'
+                record.markedBy.toLowerCase().includes('ai') ||
+                record.markedBy === 'Self (Face Recognition)' ||
+                record.markedBy === 'AI Face Recognition System'
               )) ||
               (record.teacherName && (
                 record.teacherName.toLowerCase().includes('face') ||
-                record.teacherName.toLowerCase().includes('self')
-              ));
+                record.teacherName.toLowerCase().includes('self') ||
+                record.teacherName.toLowerCase().includes('ai')
+              )) ||
+              record.aiVerified === true;
             
             console.log('Record:', record.studentName, 'markedBy:', record.markedBy, 'method:', record.method, 'teacherName:', record.teacherName, 'isFace:', isFaceRecognition);
             return isFaceRecognition;
@@ -899,7 +911,12 @@ export default function TeacherDashboard() {
                           {attendanceHistory.filter(r => 
                             r.method === 'face_recognition' || 
                             r.method === 'Face Recognition' ||
-                            r.markedBy?.toLowerCase().includes('face')
+                            r.method === 'ai_face_recognition' ||
+                            r.method === 'real_ai_face_recognition' ||
+                            r.markedBy?.toLowerCase().includes('face') ||
+                            r.markedBy?.toLowerCase().includes('ai') ||
+                            r.markedBy === 'AI Face Recognition System' ||
+                            (r as any).aiVerified === true
                           ).length}
                         </p>
                       </div>
@@ -1016,7 +1033,12 @@ export default function TeacherDashboard() {
                                   const isFaceRecognition = record && (
                                     record.method === 'face_recognition' || 
                                     record.method === 'Face Recognition' ||
-                                    record.markedBy?.toLowerCase().includes('face')
+                                    record.method === 'ai_face_recognition' ||
+                                    record.method === 'real_ai_face_recognition' ||
+                                    record.markedBy?.toLowerCase().includes('face') ||
+                                    record.markedBy?.toLowerCase().includes('ai') ||
+                                    record.markedBy === 'AI Face Recognition System' ||
+                                    (record as any).aiVerified === true
                                   );
                                   
                                   return (

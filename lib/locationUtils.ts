@@ -16,6 +16,7 @@ export interface Location {
  * Calculate distance between two coordinates using Haversine formula
  * Returns distance in meters
  */
+
 export function calculateDistance(
   lat1: number,
   lon1: number,

@@ -1,5 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
+import { extractEmbedding } from '@/lib/aiService';
+
+// Calculate Euclidean distance between two embeddings
+function euclideanDistance(a: number[], b: number[]): number {
+  if (a.length !== b.length) return Infinity;
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) {
+    sum += Math.pow(a[i] - b[i], 2);
+  }
+  return Math.sqrt(sum);
+}
+
+// Convert distance to confidence score (0 to 1)
+function distanceToConfidence(distance: number): number {
+  return Math.max(0, 1 - distance / 1.5);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,52 +30,96 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
     }
 
-    // Get all registered students with face data
-    const studentsCollection = db.collection('users');
-    const registeredStudents = await studentsCollection
-      .find({ 
-        role: { $regex: /^student$/i },
-        faceRegistered: true
-      })
+    // Step 1: Extract embedding from the captured face image
+    let capturedEmbedding: number[];
+    try {
+      const result = await extractEmbedding(faceImage);
+      if (!result.faceDetected || result.embedding.length === 0) {
+        return NextResponse.json({
+          success: true,
+          recognized: false,
+          message: 'No face detected in the image. Please position your face properly.',
+        });
+      }
+      capturedEmbedding = result.embedding;
+    } catch (err) {
+      console.error('Embedding extraction failed:', err);
+      return NextResponse.json({
+        success: true,
+        recognized: false,
+        message: 'Face detection failed. Please try again.',
+      });
+    }
+
+    // Step 2: Get all registered face embeddings from database
+    const faceEmbeddings = await db.collection('faceEmbeddings')
+      .find({ isActive: true })
       .toArray();
 
-    // Simulate face recognition processing
-    // In real implementation, this would:
-    // 1. Extract face encoding from the provided image
-    // 2. Compare with stored face encodings of all registered students
-    // 3. Find the best match above confidence threshold
-    // 4. Return student details if match found
+    if (faceEmbeddings.length === 0) {
+      return NextResponse.json({
+        success: true,
+        recognized: false,
+        message: 'No registered faces found in the system.',
+      });
+    }
 
-    // Mock face recognition result
-    const isRecognized = Math.random() > 0.3; // 70% chance of recognition for demo
-    
-    if (isRecognized && registeredStudents.length > 0) {
-      // Simulate successful recognition
-      const randomStudent = registeredStudents[Math.floor(Math.random() * registeredStudents.length)];
-      const confidence = 0.75 + Math.random() * 0.20; // 75-95% confidence
-      
+    // Step 3: Compare captured embedding against all stored embeddings
+    const THRESHOLD = 0.6; // Distance threshold — lower means stricter matching
+    let bestMatch: any = null;
+    let bestDistance = Infinity;
+
+    for (const record of faceEmbeddings) {
+      if (!record.averageEmbedding || record.averageEmbedding.length === 0) continue;
+
+      const distance = euclideanDistance(capturedEmbedding, record.averageEmbedding);
+
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestMatch = record;
+      }
+    }
+
+    // Step 4: Check if best match is within threshold
+    if (bestMatch && bestDistance <= THRESHOLD) {
+      const confidence = distanceToConfidence(bestDistance);
+
+      // Get full student details from users collection
+      const student = await db.collection('users').findOne({
+        _id: bestMatch.studentId
+      });
+
+      if (!student) {
+        return NextResponse.json({
+          success: true,
+          recognized: false,
+          message: 'Student record not found.',
+        });
+      }
+
       return NextResponse.json({
         success: true,
         recognized: true,
         student: {
-          id: randomStudent.id || randomStudent._id.toString(),
-          name: randomStudent.name,
-          rollNo: randomStudent.rollNo || randomStudent.rollNumber || 'N/A',
-          class: randomStudent.class,
-          email: randomStudent.email,
+          id: student._id.toString(),
+          name: student.name,
+          rollNo: student.rollNo || student.rollNumber || 'N/A',
+          class: student.class,
+          email: student.email,
         },
         confidence: Math.round(confidence * 100) / 100,
-        message: `Welcome ${randomStudent.name}!`
-      });
-    } else {
-      // Face not recognized
-      return NextResponse.json({
-        success: true,
-        recognized: false,
-        message: 'Face not recognized. Please register your face first.',
-        suggestion: 'Contact your teacher or admin to register your face in the system.'
+        distance: Math.round(bestDistance * 1000) / 1000,
+        message: `Welcome ${student.name}!`,
       });
     }
+
+    // No match found within threshold
+    return NextResponse.json({
+      success: true,
+      recognized: false,
+      message: 'Face not recognized. Please register your face or try again.',
+      suggestion: 'Contact your teacher or admin to register your face in the system.',
+    });
 
   } catch (error) {
     console.error('Error in face recognition:', error);
