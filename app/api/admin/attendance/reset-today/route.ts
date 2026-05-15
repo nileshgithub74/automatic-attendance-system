@@ -24,21 +24,17 @@ export async function DELETE() {
       return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
     }
 
-    // Get today's date at midnight
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Get tomorrow's date at midnight
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Get today's date in YYYY-MM-DD format (matching how attendance is stored)
+    const todayDate = new Date().toISOString().split('T')[0];
 
-    // Delete all attendance records for today
+    console.log('🗑️ Deleting attendance for date:', todayDate);
+
+    // Delete all attendance records for today (date is stored as string)
     const result = await db.collection('attendance').deleteMany({
-      date: {
-        $gte: today,
-        $lt: tomorrow
-      }
+      date: todayDate
     });
+
+    console.log(`✅ Deleted ${result.deletedCount} attendance records for today`);
 
     return NextResponse.json({
       success: true,
