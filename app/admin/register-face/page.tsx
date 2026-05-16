@@ -70,8 +70,8 @@ export default function AdminRegisterFacePage() {
   const captureImage = () => {
     if (webcamRef.current && capturedImages.length < REQUIRED_IMAGES) {
       const imageSrc = webcamRef.current.getScreenshot({
-        width: 640,
-        height: 480,
+        width: 320,
+        height: 240,
       });
       if (imageSrc) {
         setCapturedImages([...capturedImages, imageSrc]);
@@ -230,11 +230,11 @@ export default function AdminRegisterFacePage() {
                   ref={webcamRef}
                   audio={false}
                   screenshotFormat="image/jpeg"
-                  screenshotQuality={0.95}
+                  screenshotQuality={0.5}
                   className="w-full"
                   videoConstraints={{
-                    width: 640,
-                    height: 480,
+                    width: 320,
+                    height: 240,
                     facingMode: 'user',
                   }}
                 />

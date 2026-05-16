@@ -56,11 +56,8 @@ function hasFaceIndicators(base64Image: string): boolean {
   const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
   const buffer = Buffer.from(base64Data, 'base64');
 
-  // Images smaller than 1KB are likely blank or corrupted
-  if (buffer.length < 1024) {
-    console.log('⚠️ Image too small:', buffer.length, 'bytes');
-    return false;
-  }
+  // Images smaller than 2KB are likely blank or corrupted
+  if (buffer.length < 2048) return false;
 
   // Check for skin-tone byte patterns in the image data
   // JPEG images with faces typically have certain byte distributions
@@ -72,19 +69,16 @@ function hasFaceIndicators(base64Image: string): boolean {
     const g = buffer[i + 1] || 0;
     const b = buffer[i + 2] || 0;
 
-    // More lenient skin tone detection in RGB space
-    // Covers wider range of skin tones
-    if (r > 60 && g > 30 && b > 15 &&
-        r > g && r > b) {
+    // Rough skin tone detection in RGB space
+    if (r > 95 && g > 40 && b > 20 &&
+        r > g && r > b &&
+        Math.abs(r - g) > 15) {
       skinToneCount++;
     }
   }
 
   const skinRatio = skinToneCount / (sampleSize / 3);
-  console.log('🎨 Skin tone ratio:', skinRatio.toFixed(4), 'Threshold: 0.02');
-  
-  // Reduced threshold from 5% to 2% for better detection
-  return skinRatio > 0.02;
+  return skinRatio > 0.05; // At least 5% skin-tone pixels
 }
 
 export async function POST(request: NextRequest) {
