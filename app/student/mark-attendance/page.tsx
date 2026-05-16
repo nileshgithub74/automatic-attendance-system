@@ -70,6 +70,9 @@ export default function MarkAttendancePage() {
 
   const loadFaceApiModels = async () => {
     try {
+      console.log('🔄 Loading face-api.js models...');
+      setMessage({ type: 'info', text: 'Loading AI models...' });
+      
       const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -77,9 +80,14 @@ export default function MarkAttendancePage() {
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
       ]);
       setModelsLoaded(true);
-      console.log('✅ Face-api.js models loaded');
+      console.log('✅ Face-api.js models loaded successfully');
+      setMessage({ type: 'success', text: 'AI models loaded! Ready to detect faces.' });
+      
+      // Clear message after 2 seconds
+      setTimeout(() => setMessage(null), 2000);
     } catch (error) {
       console.error('❌ Error loading face-api.js models:', error);
+      setMessage({ type: 'error', text: 'Failed to load AI models. Please refresh the page.' });
     }
   };
 
@@ -178,7 +186,10 @@ export default function MarkAttendancePage() {
   };
 
   const detectFaceInVideo = async () => {
-    if (!videoRef.current || !modelsLoaded) return;
+    if (!videoRef.current || !modelsLoaded) {
+      console.log('⚠️ Cannot detect face:', { videoReady: !!videoRef.current, modelsLoaded });
+      return;
+    }
 
     try {
       const detections = await faceapi
@@ -187,6 +198,7 @@ export default function MarkAttendancePage() {
 
       if (detections) {
         const box = detections.detection.box;
+        console.log('✅ Face detected at:', box);
         setFaceDetection({
           x: box.x,
           y: box.y,
@@ -194,10 +206,11 @@ export default function MarkAttendancePage() {
           height: box.height
         });
       } else {
+        console.log('❌ No face detected in frame');
         setFaceDetection(null);
       }
     } catch (error) {
-      console.error('Face detection error:', error);
+      console.error('❌ Face detection error:', error);
       setFaceDetection(null);
     }
   };
