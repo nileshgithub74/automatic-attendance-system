@@ -697,19 +697,9 @@ export default function MarkAttendancePage() {
                           <div className="absolute top-6 left-6 right-6 z-10">
                             {/* Green banner with ONLY student name */}
                             <div className="bg-green-500 text-white p-4 rounded-xl shadow-2xl border-2 border-green-400 animate-fade-in">
-                              <div className="flex items-center gap-4">
-                                {/* Checkmark icon */}
-                                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center flex-shrink-0">
-                                  <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                </div>
-                                
-                                {/* Student name ONLY */}
-                                <div className="flex-1">
-                                  <div className="text-2xl font-bold">
-                                    {recognitionResult.student?.name || userData?.name || 'Unknown'}
-                                  </div>
+                              <div className="text-center">
+                                <div className="text-3xl font-bold">
+                                  {recognitionResult.student?.name || userData?.name || 'Unknown'}
                                 </div>
                               </div>
                             </div>
