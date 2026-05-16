@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/mongodb';
+import { detectAllFaces, findBestMatch, arrayToDescriptor } from '@/lib/faceRecognition';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🔍 Detecting multiple faces in group photo...');
+    console.log('🔍 Detecting multiple faces in group photo using face-api.js...');
 
     // Get all registered students with face data
     const db = await getDatabase();
@@ -32,60 +33,83 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 Total registered students: ${faceRegistrations.length}`);
 
-    // If no registered faces, return empty (or you can add test data)
     if (faceRegistrations.length === 0) {
       console.log('⚠️ No registered faces found in database');
-      
-      // FOR TESTING: Return dummy data to show green banner
-      const testFaces = [
-        { studentId: 'test1', name: 'Test Student 1', confidence: 0.85 },
-        { studentId: 'test2', name: 'Test Student 2', confidence: 0.92 },
-        { studentId: 'test3', name: 'Test Student 3', confidence: 0.88 }
-      ];
-      
-      console.log('🧪 Returning test data for demonstration');
       return NextResponse.json({
         success: true,
-        faces: testFaces,
-        totalDetected: testFaces.length,
+        faces: [],
+        totalDetected: 0,
         totalRegistered: 0,
-        detectionRate: 'Test Mode',
-        isTestData: true
+        detectionRate: '0%'
       });
     }
 
-    // In a real implementation, you would:
-    // 1. Use face detection library (like face-api.js, OpenCV, or AWS Rekognition)
-    // 2. Detect ALL faces in the group photo
-    // 3. Extract face embeddings for each detected face
-    // 4. Compare each detected face with all registered student faces
-    // 5. Match faces with confidence scores
+    // Use face-api.js to detect ALL faces in the image
+    console.log('🔍 Detecting all faces in image...');
+    const detectedFaceDescriptors = await detectAllFaces(imageData);
+    
+    console.log(`✅ Detected ${detectedFaceDescriptors.length} faces in the image`);
 
-    // For now, we'll simulate detecting multiple students in a group photo
+    if (detectedFaceDescriptors.length === 0) {
+      console.log('⚠️ No faces detected in this image');
+      return NextResponse.json({
+        success: true,
+        faces: [],
+        totalDetected: 0,
+        totalRegistered: faceRegistrations.length,
+        detectionRate: '0%'
+      });
+    }
+
+    // Match each detected face with registered students
     const detectedFaces = [];
+    const matchedStudentIds = new Set();
 
-    // Simulate detecting 30-70% of registered students in each photo
-    const detectionRate = 0.3 + Math.random() * 0.4; // 30-70%
-    const numToDetect = Math.floor(faceRegistrations.length * detectionRate);
-
-    console.log(`🎯 Simulating detection of ${numToDetect} students out of ${faceRegistrations.length}`);
-
-    // Randomly select students to "detect" in this photo
-    const shuffled = [...faceRegistrations].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, numToDetect);
-
-    for (const registration of selected) {
-      // Simulate confidence score between 0.75 and 0.95 for detected faces
-      const confidence = 0.75 + Math.random() * 0.2;
+    for (let i = 0; i < detectedFaceDescriptors.length; i++) {
+      const detectedDescriptor = detectedFaceDescriptors[i];
       
-      detectedFaces.push({
-        studentId: registration.studentId,
-        name: registration.studentName,
-        confidence: confidence,
-      });
+      console.log(`🔍 Matching face ${i + 1}/${detectedFaceDescriptors.length}...`);
+      
+      // Compare with all registered students
+      let bestMatch = null;
+      let bestDistance = Infinity;
+      
+      for (const registration of faceRegistrations) {
+        if (!registration.faceEmbedding || matchedStudentIds.has(registration.studentId)) {
+          continue; // Skip if already matched or no embedding
+        }
+        
+        try {
+          const registeredDescriptor = arrayToDescriptor(registration.faceEmbedding);
+          const distance = findBestMatch(detectedDescriptor, [registeredDescriptor]);
+          
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            bestMatch = registration;
+          }
+        } catch (error) {
+          console.error(`Error comparing with ${registration.studentName}:`, error);
+        }
+      }
+      
+      // If match found with confidence > 40% (distance < 0.6)
+      if (bestMatch && bestDistance < 0.6) {
+        const confidence = 1 - bestDistance; // Convert distance to confidence
+        console.log(`✅ Face ${i + 1} matched: ${bestMatch.studentName} (confidence: ${(confidence * 100).toFixed(1)}%)`);
+        
+        detectedFaces.push({
+          studentId: bestMatch.studentId,
+          name: bestMatch.studentName,
+          confidence: confidence,
+        });
+        
+        matchedStudentIds.add(bestMatch.studentId);
+      } else {
+        console.log(`❌ Face ${i + 1} not matched (best distance: ${bestDistance.toFixed(3)})`);
+      }
     }
 
-    console.log(`✅ Detected ${detectedFaces.length} faces in group photo`);
+    console.log(`✅ Matched ${detectedFaces.length} faces out of ${detectedFaceDescriptors.length} detected`);
     console.log('Detected students:', detectedFaces.map(f => f.name).join(', '));
 
     return NextResponse.json({
