@@ -22,6 +22,8 @@ export default function MarkAttendancePage() {
   const [showStudentDetails, setShowStudentDetails] = useState(false);
   const [detailsTimer, setDetailsTimer] = useState<number>(0);
   const [countdown, setCountdown] = useState<number>(5);
+  const [showNameAnyway, setShowNameAnyway] = useState<boolean>(false);
+  const [cameraStartTime, setCameraStartTime] = useState<number | null>(null);
   const [faceDetection, setFaceDetection] = useState<any>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -128,6 +130,7 @@ export default function MarkAttendancePage() {
     try {
       setMessage({ type: 'info', text: 'Starting camera...' });
       setIsCapturing(true);
+      setCameraStartTime(Date.now()); // Record when camera started
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
@@ -170,6 +173,8 @@ export default function MarkAttendancePage() {
     setRecognitionResult(null);
     setShowStudentDetails(false);
     setDetailsTimer(0);
+    setCameraStartTime(null);
+    setShowNameAnyway(false);
   };
 
   const startRealTimeFaceRecognition = () => {
@@ -205,9 +210,15 @@ export default function MarkAttendancePage() {
           width: box.width,
           height: box.height
         });
+        setShowNameAnyway(false);
       } else {
         console.log('❌ No face detected in frame');
         setFaceDetection(null);
+        
+        // Check if 15 seconds have passed since camera started
+        if (cameraStartTime && Date.now() - cameraStartTime >= 15000) {
+          setShowNameAnyway(true);
+        }
       }
     } catch (error) {
       console.error('❌ Face detection error:', error);
@@ -705,32 +716,25 @@ export default function MarkAttendancePage() {
                           </div>
                         )}
 
-                        {/* Recognition Status Overlay - Only show when face is RECOGNIZED */}
-                        {recognitionResult?.recognized && (
+                        {/* Recognition Status Overlay - Show when face is RECOGNIZED or after 15 seconds */}
+                        {(recognitionResult?.recognized || showNameAnyway) && (
                           <div className="absolute top-6 left-6 right-6 z-10">
                             {/* Green banner with ONLY student name */}
                             <div className="bg-green-500 text-white p-4 rounded-xl shadow-2xl border-2 border-green-400 animate-fade-in">
                               <div className="text-center">
                                 <div className="text-3xl font-bold">
-                                  {recognitionResult.student?.name || userData?.name || 'Unknown'}
+                                  {recognitionResult?.student?.name || userData?.name || 'Unknown'}
                                 </div>
                               </div>
                             </div>
                           </div>
                         )}
 
-                        {/* Error message when face NOT detected */}
-                        {!faceDetection && isCapturing && (
-                          <div className="absolute top-6 left-6 right-6 z-10">
-                            <div className="bg-red-500 text-white p-4 rounded-xl shadow-2xl border-2 border-red-400">
-                              <div className="flex items-center gap-3">
-                                <svg className="w-8 h-8 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                <div className="text-lg font-semibold">
-                                  ⚠️ No Face Detected
-                                </div>
-                              </div>
+                        {/* Small error message when face NOT detected (only for first 15 seconds) */}
+                        {!faceDetection && !recognitionResult?.recognized && !showNameAnyway && isCapturing && (
+                          <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-10">
+                            <div className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+                              Face not found
                             </div>
                           </div>
                         )}
