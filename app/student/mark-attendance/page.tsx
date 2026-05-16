@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
+import * as faceapi from 'face-api.js';
 
 export default function MarkAttendancePage() {
   const router = useRouter();
@@ -20,12 +21,17 @@ export default function MarkAttendancePage() {
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [showStudentDetails, setShowStudentDetails] = useState(false);
   const [detailsTimer, setDetailsTimer] = useState<number>(0);
+  const [faceDetection, setFaceDetection] = useState<any>(null);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (!isLoaded) return;
+
+    // Load face-api.js models
+    loadFaceApiModels();
 
     // Check for custom login (localStorage)
     const role = localStorage.getItem('userRole');
@@ -60,6 +66,21 @@ export default function MarkAttendancePage() {
 
     // No authentication found - don't redirect, let page show message
   }, [router, user, isLoaded]);
+
+  const loadFaceApiModels = async () => {
+    try {
+      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+      ]);
+      setModelsLoaded(true);
+      console.log('✅ Face-api.js models loaded');
+    } catch (error) {
+      console.error('❌ Error loading face-api.js models:', error);
+    }
+  };
 
   const requestLocation = async () => {
     try {
@@ -147,11 +168,37 @@ export default function MarkAttendancePage() {
     const recognitionInterval = setInterval(() => {
       if (videoRef.current && !isRecognizing && !capturedImage) {
         performFaceRecognition();
+        detectFaceInVideo(); // Also detect face for rectangle overlay
       }
     }, 2000);
 
     // Store interval reference to clear it later
     (window as any).recognitionInterval = recognitionInterval;
+  };
+
+  const detectFaceInVideo = async () => {
+    if (!videoRef.current || !modelsLoaded) return;
+
+    try {
+      const detections = await faceapi
+        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks();
+
+      if (detections) {
+        const box = detections.detection.box;
+        setFaceDetection({
+          x: box.x,
+          y: box.y,
+          width: box.width,
+          height: box.height
+        });
+      } else {
+        setFaceDetection(null);
+      }
+    } catch (error) {
+      console.error('Face detection error:', error);
+      setFaceDetection(null);
+    }
   };
 
   const performFaceRecognition = async () => {
@@ -613,6 +660,24 @@ export default function MarkAttendancePage() {
                       
                       {/* Face Recognition Overlay */}
                       <div className="absolute inset-0 pointer-events-none">
+                        {/* Face Detection Rectangle - Show when face is detected */}
+                        {faceDetection && !recognitionResult?.recognized && (
+                          <div
+                            className="absolute border-4 border-green-400 rounded-lg animate-pulse"
+                            style={{
+                              left: `${faceDetection.x}px`,
+                              top: `${faceDetection.y}px`,
+                              width: `${faceDetection.width}px`,
+                              height: `${faceDetection.height}px`,
+                              boxShadow: '0 0 20px rgba(74, 222, 128, 0.5)'
+                            }}
+                          >
+                            <div className="absolute -top-8 left-0 bg-green-500 text-white px-3 py-1 rounded-lg text-sm font-semibold">
+                              Face Detected
+                            </div>
+                          </div>
+                        )}
+
                         {/* Recognition Status Overlay - Only show when face is RECOGNIZED */}
                         {recognitionResult?.recognized && (
                           <div className="absolute top-6 left-6 right-6 z-10">
