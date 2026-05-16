@@ -672,8 +672,15 @@ export default function MarkAttendancePage() {
                               boxShadow: '0 0 20px rgba(74, 222, 128, 0.5)'
                             }}
                           >
-                            <div className="absolute -top-8 left-0 bg-green-500 text-white px-3 py-1 rounded-lg text-sm font-semibold">
-                              Face Detected
+                            <div className="absolute -top-10 left-0 right-0 flex flex-col items-center gap-1">
+                              <div className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg">
+                                ✓ Face Detected
+                              </div>
+                              {isRecognizing && (
+                                <div className="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs font-semibold animate-pulse">
+                                  🔍 Recognizing...
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
@@ -693,9 +700,15 @@ export default function MarkAttendancePage() {
                                 
                                 {/* Student details */}
                                 <div className="flex-1">
-                                  <div className="text-2xl font-bold mb-1">{recognitionResult.student?.name || 'Student'}</div>
+                                  <div className="text-2xl font-bold mb-1">
+                                    {recognitionResult.student?.name || userData?.name || 'Student'}
+                                  </div>
                                   <div className="text-lg opacity-95">
-                                    Roll: {recognitionResult.student?.rollNo || 'N/A'} | Class: {recognitionResult.student?.class || 'N/A'}
+                                    Roll: {recognitionResult.student?.rollNo || userData?.rollNo || 'N/A'} | 
+                                    Class: {recognitionResult.student?.class || userData?.class || 'N/A'}
+                                  </div>
+                                  <div className="text-sm opacity-90 mt-1">
+                                    Confidence: {Math.round((recognitionResult.confidence || 0) * 100)}%
                                   </div>
                                 </div>
                               </div>
@@ -717,10 +730,23 @@ export default function MarkAttendancePage() {
                         )}
                         
                         {/* Center recognition status */}
-                        {isRecognizing && !recognitionResult?.recognized && (
+                        {isRecognizing && !recognitionResult?.recognized && !faceDetection && (
                           <div className="absolute inset-0 flex items-center justify-center">
                             <div className="bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm font-medium animate-pulse">
                               🔍 Looking for your face...
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Show logged-in student info at bottom when face detected but not recognized yet */}
+                        {faceDetection && !recognitionResult?.recognized && userData && (
+                          <div className="absolute bottom-6 left-6 right-6">
+                            <div className="bg-blue-500 bg-opacity-90 text-white p-3 rounded-lg shadow-lg">
+                              <div className="text-center">
+                                <div className="text-sm opacity-90 mb-1">Logged in as:</div>
+                                <div className="text-lg font-bold">{userData.name}</div>
+                                <div className="text-sm">Roll: {userData.rollNo} | Class: {userData.class}</div>
+                              </div>
                             </div>
                           </div>
                         )}
