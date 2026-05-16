@@ -21,6 +21,7 @@ export default function MarkAttendancePage() {
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [showStudentDetails, setShowStudentDetails] = useState(false);
   const [detailsTimer, setDetailsTimer] = useState<number>(0);
+  const [countdown, setCountdown] = useState<number>(5);
   const [faceDetection, setFaceDetection] = useState<any>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -688,23 +689,13 @@ export default function MarkAttendancePage() {
                               boxShadow: '0 0 20px rgba(74, 222, 128, 0.5)'
                             }}
                           >
-                            <div className="absolute -top-10 left-0 right-0 flex flex-col items-center gap-1">
-                              <div className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg">
-                                ✓ Face Detected
-                              </div>
-                              {isRecognizing && (
-                                <div className="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs font-semibold animate-pulse">
-                                  🔍 Recognizing...
-                                </div>
-                              )}
-                            </div>
                           </div>
                         )}
 
                         {/* Recognition Status Overlay - Only show when face is RECOGNIZED */}
                         {recognitionResult?.recognized && (
                           <div className="absolute top-6 left-6 right-6 z-10">
-                            {/* Green banner with student info */}
+                            {/* Green banner with ONLY student name */}
                             <div className="bg-green-500 text-white p-4 rounded-xl shadow-2xl border-2 border-green-400 animate-fade-in">
                               <div className="flex items-center gap-4">
                                 {/* Checkmark icon */}
@@ -714,34 +705,30 @@ export default function MarkAttendancePage() {
                                   </svg>
                                 </div>
                                 
-                                {/* Student details - Name and Roll No only */}
+                                {/* Student name ONLY */}
                                 <div className="flex-1">
-                                  <div className="text-2xl font-bold mb-1">
+                                  <div className="text-2xl font-bold">
                                     {recognitionResult.student?.name || userData?.name || 'Unknown'}
-                                  </div>
-                                  <div className="text-lg opacity-95">
-                                    Roll No: {recognitionResult.student?.rollNo || userData?.rollNo || 'N/A'}
                                   </div>
                                 </div>
                               </div>
-                              
-                              {showStudentDetails && (
-                                <div className="mt-3 text-center text-lg font-medium bg-white bg-opacity-20 rounded-lg py-2">
-                                  Marking attendance automatically...
-                                </div>
-                              )}
                             </div>
                           </div>
                         )}
 
-                        {/* Debug info - Remove after testing */}
-                        {recognitionResult && (
-                          <div className="absolute bottom-20 left-6 right-6 bg-black bg-opacity-70 text-white p-2 rounded text-xs font-mono">
-                            <div>Recognized: {recognitionResult.recognized ? 'YES' : 'NO'}</div>
-                            <div>Name: {recognitionResult.student?.name || 'N/A'}</div>
-                            <div>Roll: {recognitionResult.student?.rollNo || 'N/A'}</div>
-                            <div>Confidence: {recognitionResult.confidence || 'N/A'}</div>
-                            <div>Distance: {recognitionResult.distance || 'N/A'}</div>
+                        {/* Error message when face NOT detected */}
+                        {!faceDetection && isCapturing && (
+                          <div className="absolute top-6 left-6 right-6 z-10">
+                            <div className="bg-red-500 text-white p-4 rounded-xl shadow-2xl border-2 border-red-400">
+                              <div className="flex items-center gap-3">
+                                <svg className="w-8 h-8 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <div className="text-lg font-semibold">
+                                  ⚠️ No Face Detected
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         )}
 
@@ -749,31 +736,6 @@ export default function MarkAttendancePage() {
                         {recognitionResult?.recognized && (
                           <div className="absolute inset-4">
                             <div className="w-full h-full border-4 border-green-400 rounded-lg shadow-lg shadow-green-400/30 animate-pulse"></div>
-                          </div>
-                        )}
-                        
-                        {/* Center recognition status */}
-                        {isRecognizing && !recognitionResult?.recognized && !faceDetection && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm font-medium animate-pulse">
-                              🔍 Looking for your face...
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Show logged-in student info at bottom when face detected but not recognized yet */}
-                        {faceDetection && !recognitionResult?.recognized && userData && (
-                          <div className="absolute bottom-6 left-6 right-6">
-                            <div className="bg-blue-500 bg-opacity-90 text-white p-3 rounded-lg shadow-lg">
-                              <div className="text-center">
-                                <div className="text-sm opacity-90 mb-1">🔍 Searching for:</div>
-                                <div className="text-lg font-bold">{userData.name}</div>
-                                <div className="text-sm">Roll: {userData.rollNo} | Class: {userData.class}</div>
-                                <div className="text-xs mt-2 opacity-75">
-                                  {isRecognizing ? 'Comparing with registered faces...' : 'Face detected, analyzing...'}
-                                </div>
-                              </div>
-                            </div>
                           </div>
                         )}
                       </div>
