@@ -215,8 +215,8 @@ export default function MarkAttendancePage() {
         console.log('❌ No face detected in frame');
         setFaceDetection(null);
         
-        // Check if 15 seconds have passed since camera started
-        if (cameraStartTime && Date.now() - cameraStartTime >= 15000) {
+        // Check if 7 seconds have passed since camera started
+        if (cameraStartTime && Date.now() - cameraStartTime >= 7000) {
           setShowNameAnyway(true);
         }
       }
@@ -726,15 +726,6 @@ export default function MarkAttendancePage() {
                                   {recognitionResult?.student?.name || userData?.name || 'Unknown'}
                                 </div>
                               </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Small error message when face NOT detected (only for first 15 seconds) */}
-                        {!faceDetection && !recognitionResult?.recognized && !showNameAnyway && isCapturing && (
-                          <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-10">
-                            <div className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
-                              Face not found
                             </div>
                           </div>
                         )}
