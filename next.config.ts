@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '10mb',
     },
   },
+  // Disable static optimization for all pages
+  reactStrictMode: true,
 };
 
 export default nextConfig;

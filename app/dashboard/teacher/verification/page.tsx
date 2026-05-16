@@ -11,7 +11,7 @@ export default function VerificationSessionPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [sessionActive, setSessionActive] = useState(false);
   const [sessionId, setSessionId] = useState('');
-  const [duration, setDuration] = useState(5); // minutes
+  const [duration, setDuration] = useState(2); // minutes - default 2 minutes
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [capturedImages, setCapturedImages] = useState(0);
   const [totalImages, setTotalImages] = useState(5); // Fixed to 5 images
@@ -19,6 +19,12 @@ export default function VerificationSessionPage() {
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [detectedFaces, setDetectedFaces] = useState<Array<{ name: string; confidence: number }>>([]);
   const [faceDetectionLog, setFaceDetectionLog] = useState<Map<string, number>>(new Map());
+  const [showResults, setShowResults] = useState(false);
+  const [attendanceResults, setAttendanceResults] = useState<{
+    presentStudents: Array<{ studentId: string; name: string; detectionCount: number; percentage: number }>;
+    absentStudents: Array<{ studentId: string; name: string; detectionCount: number }>;
+    totalStudents: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -136,7 +142,10 @@ export default function VerificationSessionPage() {
       let imagesToCapture = 5;
       let captureIntervalSeconds = 60; // 1 minute default
       
-      if (duration === 5) {
+      if (duration === 2) {
+        imagesToCapture = 2;
+        captureIntervalSeconds = 60; // Every 1 minute (2 min / 2 images)
+      } else if (duration === 5) {
         imagesToCapture = 5;
         captureIntervalSeconds = 60; // Every 1 minute (5 min / 5 images)
       } else if (duration === 7) {
@@ -410,15 +419,24 @@ export default function VerificationSessionPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('✅ Attendance marked successfully:', data);
+        
+        // Store results for display
+        setAttendanceResults({
+          presentStudents,
+          absentStudents,
+          totalStudents: allStudents.length
+        });
+        
+        // Show results modal
+        setShowResults(true);
+        
         toast.success(`Attendance marked! ${presentStudents.length} present, ${absentStudents.length} absent`);
         
-        // Show detailed results
-        console.log('Attendance marking results:', data);
-        
-        // End session after marking attendance
+        // Auto-close results and redirect after 5 seconds
         setTimeout(() => {
+          setShowResults(false);
           endSession();
-        }, 2000);
+        }, 5000);
       } else {
         const errorData = await response.json();
         console.error('❌ Failed to mark attendance:', errorData);
@@ -554,7 +572,6 @@ ${results.absentStudents.map((s: any) =>
 
   const endSession = async () => {
     setSessionActive(false);
-    toast.success('Session completed! Checking results...');
     
     // Stop location tracking
     if ((window as any).locationTrackingInterval) {
@@ -567,45 +584,32 @@ ${results.absentStudents.map((s: any) =>
       stream.getTracks().forEach((track) => track.stop());
     }
     
-    // Complete session and update attendance
-    try {
-      // Mock verification results - in real implementation, this would come from AI processing
-      const mockResults = [
-        {
-          studentId: '1',
-          studentName: 'Student 1',
-          detectionCount: 8,
-          totalImages: 10,
-          status: 'present',
-          averageSimilarity: 0.85,
-          flags: [],
-          detectedInImages: [1, 2, 3, 4, 5, 6, 7, 8],
-        },
-        // Add more mock results as needed
-      ];
-
-      const response = await fetch('/api/verification/session/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          verificationResults: mockResults,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        toast.success(`Attendance updated! ${data.summary.present} present, ${data.summary.absent} absent`);
-      }
-    } catch (error) {
-      console.error('Error completing session:', error);
-      toast.error('Session completed but failed to update attendance');
-    }
+    toast.success('Session completed! Attendance marked successfully.');
     
-    // Redirect to results
+    // Redirect to dashboard
     setTimeout(() => {
-      router.push(`/dashboard/teacher/verification/results?sessionId=${sessionId}`);
+      router.push('/dashboard/teacher');
     }, 2000);
+  };
+
+  const cancelSession = () => {
+    if (confirm('Are you sure you want to cancel this verification session?')) {
+      setSessionActive(false);
+      
+      // Stop location tracking
+      if ((window as any).locationTrackingInterval) {
+        clearInterval((window as any).locationTrackingInterval);
+      }
+      
+      // Stop camera
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      
+      toast.success('Session cancelled');
+      router.push('/dashboard/teacher');
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -650,26 +654,41 @@ ${results.absentStudents.map((s: any) =>
 
         {/* Session Status */}
         {sessionActive && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
-              <p className="text-sm text-gray-600 mb-1">Time Remaining</p>
-              <p className="text-3xl font-bold text-purple-600">{formatTime(timeRemaining)}</p>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+                <p className="text-sm text-gray-600 mb-1">Time Remaining</p>
+                <p className="text-3xl font-bold text-purple-600">{formatTime(timeRemaining)}</p>
+              </div>
+              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+                <p className="text-sm text-gray-600 mb-1">Photos Taken</p>
+                <p className="text-3xl font-bold text-blue-600">{capturedImages}/{totalImages}</p>
+              </div>
+              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+                <p className="text-sm text-gray-600 mb-1">Progress</p>
+                <p className="text-3xl font-bold text-green-600">{Math.round((capturedImages / totalImages) * 100)}%</p>
+              </div>
+              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
+                <p className="text-sm text-gray-600 mb-1">Status</p>
+                <p className="text-xl font-bold text-orange-600 flex items-center gap-2">
+                  <span className="animate-pulse">●</span> Active
+                </p>
+              </div>
             </div>
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
-              <p className="text-sm text-gray-600 mb-1">Photos Taken</p>
-              <p className="text-3xl font-bold text-blue-600">{capturedImages}/{totalImages}</p>
+
+            {/* Cancel Button */}
+            <div className="mb-8 flex justify-center">
+              <button
+                onClick={cancelSession}
+                className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold flex items-center gap-2 shadow-lg"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel Session
+              </button>
             </div>
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
-              <p className="text-sm text-gray-600 mb-1">Progress</p>
-              <p className="text-3xl font-bold text-green-600">{Math.round((capturedImages / totalImages) * 100)}%</p>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
-              <p className="text-sm text-gray-600 mb-1">Status</p>
-              <p className="text-xl font-bold text-orange-600 flex items-center gap-2">
-                <span className="animate-pulse">●</span> Active
-              </p>
-            </div>
-          </div>
+          </>
         )}
 
         {/* Camera Preview */}
@@ -750,6 +769,7 @@ ${results.absentStudents.map((s: any) =>
                   onChange={(e) => setDuration(Number(e.target.value))}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-700"
                 >
+                  <option value={2}>2 minutes</option>
                   <option value={5}>5 minutes</option>
                   <option value={7}>7 minutes</option>
                   <option value={10}>10 minutes</option>
@@ -811,6 +831,118 @@ ${results.absentStudents.map((s: any) =>
           </div>
         )}
       </div>
+
+      {/* Results Modal */}
+      {showResults && attendanceResults && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-8">
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">Verification Complete!</h2>
+                <p className="text-gray-600">AI-based attendance verification completed</p>
+              </div>
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-3 gap-4 mb-8">
+                <div className="bg-blue-50 rounded-lg p-4 text-center">
+                  <p className="text-sm text-blue-600 font-medium mb-1">Total Students</p>
+                  <p className="text-3xl font-bold text-blue-700">{attendanceResults.totalStudents}</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-4 text-center">
+                  <p className="text-sm text-green-600 font-medium mb-1">Present</p>
+                  <p className="text-3xl font-bold text-green-700">{attendanceResults.presentStudents.length}</p>
+                </div>
+                <div className="bg-red-50 rounded-lg p-4 text-center">
+                  <p className="text-sm text-red-600 font-medium mb-1">Absent</p>
+                  <p className="text-3xl font-bold text-red-700">{attendanceResults.absentStudents.length}</p>
+                </div>
+              </div>
+
+              {/* Present Students */}
+              {attendanceResults.presentStudents.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    Present Students ({attendanceResults.presentStudents.length})
+                  </h3>
+                  <div className="bg-green-50 rounded-lg p-4 max-h-60 overflow-y-auto">
+                    <div className="space-y-2">
+                      {attendanceResults.presentStudents.map((student, index) => (
+                        <div key={index} className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold">
+                              {index + 1}
+                            </div>
+                            <span className="font-medium text-gray-900">{student.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">
+                              Detected: {student.detectionCount}/{totalImages}
+                            </span>
+                            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                              {student.percentage}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Absent Students */}
+              {attendanceResults.absentStudents.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                    Absent Students ({attendanceResults.absentStudents.length})
+                  </h3>
+                  <div className="bg-red-50 rounded-lg p-4 max-h-60 overflow-y-auto">
+                    <div className="space-y-2">
+                      {attendanceResults.absentStudents.map((student, index) => (
+                        <div key={index} className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white font-semibold">
+                              {index + 1}
+                            </div>
+                            <span className="font-medium text-gray-900">{student.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">
+                              Detected: {student.detectionCount}/{totalImages}
+                            </span>
+                            <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
+                              Not Found
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="text-center">
+                <p className="text-sm text-gray-500 mb-4">Redirecting to dashboard in 5 seconds...</p>
+                <button
+                  onClick={() => {
+                    setShowResults(false);
+                    endSession();
+                  }}
+                  className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold"
+                >
+                  Go to Dashboard Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

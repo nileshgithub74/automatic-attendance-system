@@ -5,6 +5,10 @@ import Navbar from "@/components/Navbar";
 import { Toaster } from "react-hot-toast";
 import { ClerkProvider } from "@clerk/nextjs";
 
+// Force dynamic rendering for all pages
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
