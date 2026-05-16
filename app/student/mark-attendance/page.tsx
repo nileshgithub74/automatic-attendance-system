@@ -233,10 +233,15 @@ export default function MarkAttendancePage() {
             success: result.success,
             recognized: result.recognized,
             hasStudent: !!result.student,
-            studentName: result.student?.name
+            studentName: result.student?.name,
+            studentRollNo: result.student?.rollNo,
+            confidence: result.confidence,
+            distance: result.distance
           });
           
+          // CRITICAL: Set recognition result immediately
           setRecognitionResult(result);
+          console.log('🎯 Recognition result state updated:', result.recognized ? 'RECOGNIZED' : 'NOT RECOGNIZED');
           
           if (result.recognized) {
             // Stop the recognition interval
@@ -262,15 +267,26 @@ export default function MarkAttendancePage() {
             
           } else {
             console.log('❌ Face not recognized:', result.message);
-            setMessage({ 
-              type: 'info', 
-              text: result.message || 'Looking for your face...' 
-            });
+            
+            // Check if it's a "no registered faces" message
+            if (result.message && result.message.includes('No registered faces')) {
+              setMessage({ 
+                type: 'error', 
+                text: '⚠️ No face registered! Please register your face first from the dashboard.' 
+              });
+            } else {
+              setMessage({ 
+                type: 'info', 
+                text: result.message || 'Looking for your face...' 
+              });
+            }
             
             // Show message for 2 seconds then continue recognition
             setTimeout(() => {
               setRecognitionResult(null);
-              setMessage(null);
+              if (!result.message || !result.message.includes('No registered faces')) {
+                setMessage(null);
+              }
             }, 2000);
           }
         } else {
@@ -698,17 +714,13 @@ export default function MarkAttendancePage() {
                                   </svg>
                                 </div>
                                 
-                                {/* Student details */}
+                                {/* Student details - Name and Roll No only */}
                                 <div className="flex-1">
                                   <div className="text-2xl font-bold mb-1">
-                                    {recognitionResult.student?.name || userData?.name || 'Student'}
+                                    {recognitionResult.student?.name || userData?.name || 'Unknown'}
                                   </div>
                                   <div className="text-lg opacity-95">
-                                    Roll: {recognitionResult.student?.rollNo || userData?.rollNo || 'N/A'} | 
-                                    Class: {recognitionResult.student?.class || userData?.class || 'N/A'}
-                                  </div>
-                                  <div className="text-sm opacity-90 mt-1">
-                                    Confidence: {Math.round((recognitionResult.confidence || 0) * 100)}%
+                                    Roll No: {recognitionResult.student?.rollNo || userData?.rollNo || 'N/A'}
                                   </div>
                                 </div>
                               </div>
@@ -719,6 +731,17 @@ export default function MarkAttendancePage() {
                                 </div>
                               )}
                             </div>
+                          </div>
+                        )}
+
+                        {/* Debug info - Remove after testing */}
+                        {recognitionResult && (
+                          <div className="absolute bottom-20 left-6 right-6 bg-black bg-opacity-70 text-white p-2 rounded text-xs font-mono">
+                            <div>Recognized: {recognitionResult.recognized ? 'YES' : 'NO'}</div>
+                            <div>Name: {recognitionResult.student?.name || 'N/A'}</div>
+                            <div>Roll: {recognitionResult.student?.rollNo || 'N/A'}</div>
+                            <div>Confidence: {recognitionResult.confidence || 'N/A'}</div>
+                            <div>Distance: {recognitionResult.distance || 'N/A'}</div>
                           </div>
                         )}
 
@@ -743,9 +766,12 @@ export default function MarkAttendancePage() {
                           <div className="absolute bottom-6 left-6 right-6">
                             <div className="bg-blue-500 bg-opacity-90 text-white p-3 rounded-lg shadow-lg">
                               <div className="text-center">
-                                <div className="text-sm opacity-90 mb-1">Logged in as:</div>
+                                <div className="text-sm opacity-90 mb-1">🔍 Searching for:</div>
                                 <div className="text-lg font-bold">{userData.name}</div>
                                 <div className="text-sm">Roll: {userData.rollNo} | Class: {userData.class}</div>
+                                <div className="text-xs mt-2 opacity-75">
+                                  {isRecognizing ? 'Comparing with registered faces...' : 'Face detected, analyzing...'}
+                                </div>
                               </div>
                             </div>
                           </div>
